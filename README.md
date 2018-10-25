@@ -6,13 +6,10 @@ niftidataset
 [![Documentation Status](https://readthedocs.org/projects/niftidataset/badge/?version=latest)](http://niftidataset.readthedocs.io/en/latest/)
 [![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
-This package simply provides appropriate `dataset` and `transforms` for NIfTI images 
+This package simply provides appropriate `dataset` and `transforms` classes for NIfTI images 
 for use with PyTorch or PyTorch wrappers
 
-** Note that while this release was carefully inspected, there may be bugs. Please submit an issue if you encounter a problem. **
-
-This package was developed by [Jacob Reinhold](https://jcreinhold.github.io) and the other students and researchers of the 
-[Image Analysis and Communication Lab (IACL)](http://iacl.ece.jhu.edu/index.php/Main_Page).
+** Note that this is an **alpha** release. If you have feedback or problems, please submit an issue (it is very appreciated) **
 
 Requirements
 ------------
@@ -30,9 +27,9 @@ Installation
 Tutorial
 --------
 
-[5 minute Overview](https://github.com/jcreinhold/intensity-normalization/blob/master/tutorials/5min_tutorial.md)
+[5 minute Overview](https://github.com/jcreinhold/niftidataset/blob/master/tutorials/5min-tutorial.ipynb)
 
-In addition to the above small tutorial, there is consolidated documentation [here](https://intensity-normalization.readthedocs.io/en/latest/).
+In addition to the above small tutorial, there is consolidated documentation [here](https://niftidataset.readthedocs.io/en/latest/).
 
 Test Package
 ------------

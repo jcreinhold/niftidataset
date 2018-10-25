@@ -7,7 +7,7 @@ the actual dataset classes of niftidataset
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
-Created on: Apr 24, 2018
+Created on: Oct 24, 2018
 """
 
 __all__ = ['NiftiDataset']
@@ -29,6 +29,7 @@ class NiftiDataset(Dataset):
         target_dir (str): path to target images
         transform (Callable): transform to apply to both source and target images
     """
+
     def __init__(self, source_dir: str, target_dir: str, transform: Optional[Callable]=None):
         self.source_dir, self.target_dir = source_dir, target_dir
         self.source_fns, self.target_fns = glob_nii(source_dir), glob_nii(target_dir)

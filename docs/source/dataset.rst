@@ -1,13 +1,7 @@
 Dataset
 ===================================
 
-This module holds all of the torch dataset classes
+This module holds all of the pytorch dataset classes
 
-.. automodule:: niftidataset
-
-NiftiDataset
-~~~~~~~~~~~~
-
-.. autoclass:: niftidataset.NiftiDataset
+.. automodule:: niftidataset.dataset
    :members:
-
