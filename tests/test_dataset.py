@@ -17,12 +17,25 @@ import torchvision.transforms as torch_tfms
 
 from niftidataset import *
 
+try:
+    import fastai
+except ImportError:
+    fastai = None
+
 
 class TestUtilities(unittest.TestCase):
 
     def setUp(self):
         wd = os.path.dirname(os.path.abspath(__file__))
         self.data_dir = os.path.join(wd, 'test_data', 'images')
+
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_niftidataset_2d_fastai(self):
+        composed = torch_tfms.Compose([RandomCrop2D(10, 0),
+                                       ToTensor(),
+                                       ToFastaiImage()])
+        myds = NiftiDataset(self.data_dir, self.data_dir, composed)
+        self.assertEqual(myds[0][0].shape, (3,10,10))
 
     def test_niftidataset_2d(self):
         composed = torch_tfms.Compose([RandomCrop2D(10, 0),
@@ -32,9 +45,10 @@ class TestUtilities(unittest.TestCase):
 
     def test_niftidataset_3d(self):
         composed = torch_tfms.Compose([RandomCrop3D(10),
-                                       ToTensor()])
+                                       ToTensor(),
+                                       AddChannel()])
         myds = NiftiDataset(self.data_dir, self.data_dir, composed)
-        self.assertEqual(myds[0][0].shape, (10,10,10))
+        self.assertEqual(myds[0][0].shape, (1,10,10,10))
 
     def tearDown(self):
         pass

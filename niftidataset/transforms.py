@@ -12,7 +12,9 @@ Created on: Oct 24, 2018
 
 __all__ = ['RandomCrop2D',
            'RandomCrop3D',
-           'ToTensor']
+           'ToTensor',
+           'AddChannel',
+           'ToFastaiImage']
 
 from typing import Union, Optional, Tuple
 
@@ -110,3 +112,25 @@ class ToTensor:
         src, tgt = sample
         assert src.shape == tgt.shape
         return (torch.from_numpy(src), torch.from_numpy(tgt))
+
+
+class AddChannel:
+    """ Add empty first dimension to sample (generally only required for 3D samples) """
+
+    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]):
+        src, tgt = sample
+        assert src.shape == tgt.shape
+        return (src.unsqueeze(0), tgt.unsqueeze(0))
+
+
+class ToFastaiImage:
+    """ convert a 2D image (with no channel) to fastai.Image class """
+
+    def __init__(self):
+        from fastai.vision import Image
+        self.Image = Image
+
+    def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]):
+        x, y = sample
+        x, y = torch.stack([x, x, x]),  torch.stack([y, y, y])
+        return self.Image(x), self.Image(y)
