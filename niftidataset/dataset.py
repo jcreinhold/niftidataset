@@ -34,7 +34,7 @@ class NiftiDataset(Dataset):
         self.source_dir, self.target_dir = source_dir, target_dir
         self.source_fns, self.target_fns = glob_nii(source_dir), glob_nii(target_dir)
         self.transform = transform
-        if len(self.source_fns) != len(self.target_fns) and len(self.source_fns) > 0:
+        if len(self.source_fns) != len(self.target_fns) or len(self.source_fns) == 0:
             raise ValueError(f'Number of source and target images must be equal and non-zero')
 
     def __len__(self):
