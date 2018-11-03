@@ -14,7 +14,8 @@ __all__ = ['RandomCrop2D',
            'RandomCrop3D',
            'ToTensor',
            'AddChannel',
-           'ToFastaiImage']
+           'ToFastaiImage',
+           'Normalize']
 
 from typing import Union, Optional, Tuple
 
@@ -37,12 +38,12 @@ class CropBase:
             self.output_size = output_size
         self.out_dim = out_dim
 
-    def get_sample_idxs(self, img: np.ndarray, mask: Optional[np.ndarray] = None):
+    def _get_sample_idxs(self, img: np.ndarray, mask: Optional[np.ndarray] = None) -> Tuple[int, int, int]:
         """ get the set of indices from which to sample (foreground) """
         mask = np.where(img > img.mean())  # returns a tuple of length 3
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
-        hh, ww, dd = [m[c] for m in mask]  # pull out the chosen idxs
-        return hh, ww, dd
+        h, w, d = [m[c] for m in mask]  # pull out the chosen idxs
+        return h, w, d
 
 
 class RandomCrop2D(CropBase):
@@ -54,31 +55,54 @@ class RandomCrop2D(CropBase):
             If int, cube crop is made.
         axis (int or None): along which axis should the patch/slice be extracted
             provide None for random axis
+        include_neighbors (bool): extract 3 neighboring slices instead of just 1
     """
 
-    def __init__(self, output_size: Union[tuple, int], axis: Union[int, None] = 0):
+    def __init__(self, output_size: Union[tuple, int], axis: Union[int, None] = 0,
+                 include_neighbors: bool= False) -> None:
         if axis is not None:
             assert axis <= 2
         super().__init__(2, output_size)
         self.axis = axis
+        self.include_neighbors = include_neighbors
 
-    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]):
-        axis = self.axis or np.random.randint(0, 3)
+    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+        axis = self.axis if self.axis is not None else np.random.randint(0, 3)
         src, tgt = sample
-        assert src.shape == tgt.shape
+        assert src.shape == tgt.shape and src.ndim == 3
         h, w, d = src.shape
         new_h, new_w = self.output_size
-        max_idxs = (np.inf, w - new_h, d - new_w) if axis == 0 else \
-            (h - new_h, np.inf, d - new_w) if axis == 1 else \
-                (h - new_h, w - new_w, np.inf)
-        hh, ww, dd = [min(max_i, i) for max_i, i in zip(max_idxs, super().get_sample_idxs(src))]
-        s = src[hh, ww: ww + new_h, dd: dd + new_w] if axis == 0 else \
-            src[hh: hh + new_h, ww, dd: dd + new_w] if axis == 1 else \
-                src[hh: hh + new_h, ww: ww + new_w, dd]
-        t = tgt[hh, ww: ww + new_h, dd: dd + new_w] if axis == 0 else \
-            tgt[hh: hh + new_h, ww, dd: dd + new_w] if axis == 1 else \
-                tgt[hh: hh + new_h, ww: ww + new_w, dd]
+        max_idxs = (np.inf, w - new_h//2, d - new_w//2) if axis == 0 else \
+                   (h - new_h//2, np.inf, d - new_w//2) if axis == 1 else \
+                   (h - new_h//2, w - new_w//2, np.inf)
+        min_idxs = (-np.inf, new_h//2, new_w//2) if axis == 0 else \
+                   (new_h//2, -np.inf, new_w//2) if axis == 1 else \
+                   (new_h//2, new_w//2, -np.inf)
+        s_idxs = super()._get_sample_idxs(src)
+        idxs = [i if min_i <= i <= max_i else max_i if i > max_i else min_i
+                for max_i, min_i, i in zip(max_idxs, min_idxs, s_idxs)]
+        s = self.__get_slice(src, idxs, axis)
+        t = self.__get_slice(tgt, idxs, axis)
         return s, t
+
+    def __get_slice(self, img: np.ndarray, idxs: Tuple[int,int,int], axis: int) -> np.ndarray:
+        h, w = self.output_size
+        n = 1 if self.include_neighbors else 0
+        oh = 0 if h % 2 == 0 else 1
+        ow = 0 if w % 2 == 0 else 1
+        i, j, k = idxs
+        s = img[i-n:i+1+n, j-h//2:j+h//2+oh, k-w//2:k+w//2+ow] if axis == 0 else \
+            img[i-h//2:i+h//2+oh, j-n:j+1+n, k-w//2:k+w//2+ow] if axis == 1 else \
+            img[i-h//2:i+h//2+oh, j-w//2:j+w//2+ow, k-n:k+1+n]
+        if any(np.array(s.shape) == 0):
+            import pdb; pdb.set_trace()
+        if self.include_neighbors:
+            s = np.transpose(s, (0,1,2)) if axis == 0 else \
+                np.transpose(s, (1,0,2)) if axis == 1 else \
+                np.transpose(s, (2,0,1))
+        else:
+            s = np.squeeze(s)
+        return s
 
 
 class RandomCrop3D(CropBase):
@@ -93,22 +117,28 @@ class RandomCrop3D(CropBase):
     def __init__(self, output_size: Union[tuple, int]):
         super().__init__(3, output_size)
 
-    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]):
+    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
         src, tgt = sample
         assert src.shape == tgt.shape
         h, w, d = src.shape
-        new_h, new_w, new_d = self.output_size
-        max_idxs = (h - new_h, w - new_w, d - new_d)
-        hh, ww, dd = [min(max_i, i) for max_i, i in zip(max_idxs, super().get_sample_idxs(src))]
-        s = src[hh: hh + new_h, ww: ww + new_w, dd: dd + new_d]
-        t = tgt[hh: hh + new_h, ww: ww + new_w, dd: dd + new_d]
+        hh, ww, dd = self.output_size
+        max_idxs = (h-hh//2, w-ww//2, d-dd//2)
+        min_idxs = (hh//2, ww//2, dd//2)
+        s_idxs = super()._get_sample_idxs(src)
+        i, j, k = [i if min_i <= i <= max_i else max_i if i > max_i else min_i
+                   for max_i, min_i, i in zip(max_idxs, min_idxs, s_idxs)]
+        oh = 0 if hh % 2 == 0 else 1
+        ow = 0 if ww % 2 == 0 else 1
+        od = 0 if dd % 2 == 0 else 1
+        s = src[i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
+        t = tgt[i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
         return s, t
 
 
 class ToTensor:
     """ Convert ndarrays in sample to Tensors """
 
-    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]):
+    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[torch.Tensor, torch.Tensor]:
         src, tgt = sample
         assert src.shape == tgt.shape
         return (torch.from_numpy(src), torch.from_numpy(tgt))
@@ -117,7 +147,7 @@ class ToTensor:
 class AddChannel:
     """ Add empty first dimension to sample (generally only required for 3D samples) """
 
-    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]):
+    def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         src, tgt = sample
         assert src.shape == tgt.shape
         return (src.unsqueeze(0), tgt.unsqueeze(0))
@@ -126,11 +156,23 @@ class AddChannel:
 class ToFastaiImage:
     """ convert a 2D image (with no channel) to fastai.Image class """
 
-    def __init__(self):
+    def __init__(self, is_3_channel: bool=False):
         from fastai.vision import Image
         self.Image = Image
+        self.is_3_channel = is_3_channel
 
     def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]):
         x, y = sample
-        x, y = torch.stack([x, x, x]),  torch.stack([y, y, y])
+        if not self.is_3_channel:
+            x, y = torch.stack([x, x, x]),  torch.stack([y, y, y])
         return self.Image(x), self.Image(y)
+
+
+class Normalize:
+    """ put data in range of 0 to 1 """
+
+    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+        x, y = sample
+        x = (x - x.min()) / (x.max() - x.min())
+        y = (y - y.min()) / (y.max() - y.min())
+        return x, y
