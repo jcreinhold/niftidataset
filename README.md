@@ -4,7 +4,7 @@ niftidataset
 [![Build Status](https://travis-ci.org/jcreinhold/niftidataset.svg?branch=master)](https://travis-ci.org/jcreinhold/niftidataset)
 [![Coverage Status](https://coveralls.io/repos/github/jcreinhold/niftidataset/badge.svg?branch=master)](https://coveralls.io/github/jcreinhold/niftidataset?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/niftidataset/badge/?version=latest)](http://niftidataset.readthedocs.io/en/latest/)
-[![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
+[![Python Versions](https://img.shields.io/badge/python-3.6%20%7C%203.7-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
 This package simply provides appropriate `dataset` and `transforms` classes for NIfTI images 
 for use with PyTorch or PyTorch wrappers

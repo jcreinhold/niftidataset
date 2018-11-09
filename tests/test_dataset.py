@@ -35,20 +35,21 @@ class TestUtilities(unittest.TestCase):
                                        ToTensor(),
                                        ToFastaiImage()])
         myds = NiftiDataset(self.data_dir, self.data_dir, composed)
-        self.assertEqual(myds[0][0].shape, (3,10,10))
+        self.assertEqual(myds[0][0].shape, (1,10,10))
 
     def test_niftidataset_2d(self):
         composed = torch_tfms.Compose([RandomCrop2D(10, 0),
-                                       ToTensor()])
+                                       ToTensor(),
+                                       Normalize()])
         myds = NiftiDataset(self.data_dir, self.data_dir, composed)
-        self.assertEqual(myds[0][0].shape, (10,10))
+        self.assertEqual(myds[0][0].shape, (1,10,10))
 
     def test_niftidataset_3d(self):
         composed = torch_tfms.Compose([RandomCrop3D(10),
                                        ToTensor(),
                                        AddChannel()])
         myds = NiftiDataset(self.data_dir, self.data_dir, composed)
-        self.assertEqual(myds[0][0].shape, (1,10,10,10))
+        self.assertEqual(myds[0][0].shape, (1,1,10,10,10))
 
     def tearDown(self):
         pass

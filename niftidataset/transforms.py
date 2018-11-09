@@ -13,8 +13,8 @@ Created on: Oct 24, 2018
 __all__ = ['RandomCrop2D',
            'RandomCrop3D',
            'ToTensor',
-           'AddChannel',
            'ToFastaiImage',
+           'AddChannel',
            'Normalize']
 
 from typing import Union, Optional, Tuple
@@ -94,14 +94,12 @@ class RandomCrop2D(CropBase):
         s = img[i-n:i+1+n, j-h//2:j+h//2+oh, k-w//2:k+w//2+ow] if axis == 0 else \
             img[i-h//2:i+h//2+oh, j-n:j+1+n, k-w//2:k+w//2+ow] if axis == 1 else \
             img[i-h//2:i+h//2+oh, j-w//2:j+w//2+ow, k-n:k+1+n]
-        if any(np.array(s.shape) == 0):
-            import pdb; pdb.set_trace()
         if self.include_neighbors:
             s = np.transpose(s, (0,1,2)) if axis == 0 else \
                 np.transpose(s, (1,0,2)) if axis == 1 else \
                 np.transpose(s, (2,0,1))
         else:
-            s = np.squeeze(s)
+            s = np.squeeze(s)[np.newaxis, ...]  # add empty channel
         return s
 
 
@@ -130,8 +128,8 @@ class RandomCrop3D(CropBase):
         oh = 0 if hh % 2 == 0 else 1
         ow = 0 if ww % 2 == 0 else 1
         od = 0 if dd % 2 == 0 else 1
-        s = src[i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
-        t = tgt[i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
+        s = src[np.newaxis, i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
+        t = tgt[np.newaxis, i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
         return s, t
 
 
@@ -144,28 +142,25 @@ class ToTensor:
         return (torch.from_numpy(src), torch.from_numpy(tgt))
 
 
+class ToFastaiImage:
+    """ convert a 2D image to fastai.Image class """
+
+    def __init__(self):
+        from fastai.vision import Image
+        self.Image = Image
+
+    def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]):
+        x, y = sample
+        return self.Image(x), self.Image(y)
+
+
 class AddChannel:
-    """ Add empty first dimension to sample (generally only required for 3D samples) """
+    """ Add empty first dimension to sample """
 
     def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         src, tgt = sample
         assert src.shape == tgt.shape
         return (src.unsqueeze(0), tgt.unsqueeze(0))
-
-
-class ToFastaiImage:
-    """ convert a 2D image (with no channel) to fastai.Image class """
-
-    def __init__(self, is_3_channel: bool=False):
-        from fastai.vision import Image
-        self.Image = Image
-        self.is_3_channel = is_3_channel
-
-    def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]):
-        x, y = sample
-        if not self.is_3_channel:
-            x, y = torch.stack([x, x, x]),  torch.stack([y, y, y])
-        return self.Image(x), self.Image(y)
 
 
 class Normalize:
