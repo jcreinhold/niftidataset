@@ -12,6 +12,7 @@ Created on: Oct 24, 2018
 
 __all__ = ['RandomCrop2D',
            'RandomCrop3D',
+           'RandomSlice',
            'ToTensor',
            'ToFastaiImage',
            'AddChannel',
@@ -38,7 +39,7 @@ class CropBase:
             self.output_size = output_size
         self.out_dim = out_dim
 
-    def _get_sample_idxs(self, img: np.ndarray, mask: Optional[np.ndarray] = None) -> Tuple[int, int, int]:
+    def _get_sample_idxs(self, img: np.ndarray, mask: Optional[np.ndarray]=None) -> Tuple[int, int, int]:
         """ get the set of indices from which to sample (foreground) """
         mask = np.where(img > img.mean())  # returns a tuple of length 3
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
@@ -58,7 +59,7 @@ class RandomCrop2D(CropBase):
         include_neighbors (bool): extract 3 neighboring slices instead of just 1
     """
 
-    def __init__(self, output_size: Union[tuple, int], axis: Union[int, None] = 0,
+    def __init__(self, output_size: Union[tuple, int], axis: Union[int, None]=0,
                  include_neighbors: bool= False) -> None:
         if axis is not None:
             assert axis <= 2
@@ -131,6 +132,40 @@ class RandomCrop3D(CropBase):
         s = src[np.newaxis, i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
         t = tgt[np.newaxis, i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
         return s, t
+
+
+class RandomSlice:
+    """
+    take a random 2d slice from an image given a sample axis
+
+    Args:
+        axis (int): axis on which to take a slice
+        div (float): divide the mean by this value in the calculation of mask
+            the higher this value, the more background will be "valid"
+    """
+
+    def __init__(self, axis: int=0, div: float=2):
+        self.axis = axis
+        self.div = div
+
+    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+        src, tgt = sample
+        idx = np.random.choice(self.__valid_idxs(src)[self.axis])
+        s = self.__get_slice(src, idx)
+        t = self.__get_slice(tgt, idx)
+        return s, t
+
+    def __get_slice(self, img: np.ndarray, idx: int):
+        s = img[idx,:,:] if self.axis == 0 else \
+            img[:,idx,:] if self.axis == 1 else \
+            img[:,:,idx]
+        return s
+
+    def __valid_idxs(self, img: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """ get the set of indices from which to sample (foreground) """
+        mask = np.where(img > img.mean() / self.div)  # returns a tuple of length 3
+        h, w, d = [np.arange(np.min(m), np.max(m)+1) for m in mask]  # pull out the valid idx ranges
+        return h, w, d
 
 
 class ToTensor:
