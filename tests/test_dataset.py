@@ -58,6 +58,13 @@ class TestUtilities(unittest.TestCase):
         myds = NiftiDataset(self.data_dir, self.data_dir, composed)
         self.assertEqual(myds[0][0].shape, (1,1,10,10,10))
 
+    def test_niftidataset_preload(self):
+        composed = torch_tfms.Compose([RandomCrop3D(10),
+                                       ToTensor(),
+                                       AddChannel()])
+        myds = NiftiDataset(self.data_dir, self.data_dir, composed, preload=True)
+        self.assertEqual(myds[0][0].shape, (1,1,10,10,10))
+
     def tearDown(self):
         pass
 
