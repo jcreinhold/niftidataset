@@ -88,6 +88,15 @@ class TestUtilities(unittest.TestCase):
         myds = niidatabunch(self.train_dir, self.train_dir, tfms=tfms, split=0.5)
         self.assertEqual(myds.train_ds[0][0].shape, (1,10,10,10))
 
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_niidatabunch_valid_dir(self):
+        from niftidataset.fastai import get_slice, niidatabunch
+        tfms = [get_slice()]
+        myds = niidatabunch(self.train_dir, self.train_dir, tfms=tfms, split=0.5,
+                            val_src_dir=self.train_dir, val_tgt_dir=self.train_dir)
+        self.assertEqual(myds.train_ds[0][0].shape, (1,64,64))
+        self.assertEqual(myds.valid_ds[0][0].shape, (1,64,64))
+
     def tearDown(self):
         pass
 

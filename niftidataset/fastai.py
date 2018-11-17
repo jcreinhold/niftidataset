@@ -59,17 +59,27 @@ def get_patch3d(x, pct:faiv.uniform=0.5, ps:int=64) -> np.ndarray:
 
 
 def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
-                 path:str='.', bs:int=32, device:Union[str,torch.device]="cpu", n_jobs=fai.defaults.cpus):
+                 path:str='.', bs:int=32, device:Union[str,torch.device]="cpu", n_jobs=fai.defaults.cpus,
+                 val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None):
     """ create a NIfTI databunch from two directories """
     src_fns = glob_nii(src_dir)
     tgt_fns = glob_nii(tgt_dir)
     if len(src_fns) != len(tgt_fns) or len(src_fns) == 0:
         raise ValueError(f'Number of source and target images must be equal and non-zero')
-    val_idxs = np.random.choice(len(src_fns), int(split * len(src_fns)))
-    srcd = fai.ItemList(src_fns, create_func=open_nii).split_by_idx(val_idxs)
-    tgtd = fai.ItemList(tgt_fns, create_func=open_nii).split_by_idx(val_idxs)
-    train_ll = fai.LabelList(srcd.train, tgtd.train, tfms, tfm_y=True)
-    val_ll = fai.LabelList(srcd.valid, tgtd.valid, tfms, tfm_y=True)
+    src = fai.ItemList(src_fns, create_func=open_nii)
+    tgt = fai.ItemList(tgt_fns, create_func=open_nii)
+    if isinstance(val_src_dir, str) and isinstance(val_tgt_dir, str):
+        train_src, train_tgt = src, tgt
+        valid_src = fai.ItemList(src_fns, create_func=open_nii)
+        valid_tgt = fai.ItemList(tgt_fns, create_func=open_nii)
+    else:
+        val_idxs = np.random.choice(len(src_fns), int(split * len(src_fns)))
+        src = src.split_by_idx(val_idxs)
+        tgt = tgt.split_by_idx(val_idxs)
+        train_src, train_tgt = src.train, tgt.train
+        valid_src, valid_tgt = src.valid, tgt.valid
+    train_ll = fai.LabelList(train_src, train_tgt, tfms, tfm_y=True)
+    val_ll = fai.LabelList(valid_src, valid_tgt, tfms, tfm_y=True)
     ll = fai.LabelLists(path, train_ll, val_ll)
     idb = faiv.ImageDataBunch.create_from_ll(ll, bs=bs, device=device, num_workers=n_jobs)
     return idb
