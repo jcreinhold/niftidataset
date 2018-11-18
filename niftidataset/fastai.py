@@ -35,23 +35,22 @@ def open_nii(fn:str) -> faiv.Image:
 
 @faiv.TfmPixel
 @singledispatch
-def get_slice(x, pct:faiv.uniform=0.5, axis:int=0) -> np.ndarray:
+def get_slice(x, pct:faiv.uniform=0.5, axis:int=0) -> torch.Tensor:
     """" Get a random slice of `x` based on axis """
     s = int(x.size(axis) * pct)
     return x[np.newaxis,s,:,:].contiguous() if axis == 0 else \
            x[np.newaxis,:,s,:].contiguous() if axis == 1 else \
            x[np.newaxis,:,:,s].contiguous()
 
+
 @faiv.TfmPixel
 @singledispatch
-def get_patch3d(x, pct:faiv.uniform=0.5, ps:int=64) -> np.ndarray:
+def get_patch3d(x, ps:int=64, h_pct:faiv.uniform=0.5, w_pct:faiv.uniform=0.5, d_pct:faiv.uniform=0.5) -> torch.Tensor:
     """" Get a random 3d patch of `x` of size ps^3 """
     h, w, d = x.shape
     max_idxs = (h - ps // 2, w - ps // 2, d - ps // 2)
     min_idxs = (ps // 2, ps // 2, ps // 2)
-    mask = np.where(x > x.mean())  # returns a tuple of length 3
-    c = int(len(mask[0] * pct)-1)
-    s_idxs = [m[c] for m in mask]  # pull out the chosen idxs
+    s_idxs = (int(h * h_pct), int(w * w_pct), int(d * d_pct))
     i, j, k = [i if min_i <= i <= max_i else max_i if i > max_i else min_i
                for max_i, min_i, i in zip(max_idxs, min_idxs, s_idxs)]
     o = 0 if ps % 2 == 0 else 1
@@ -59,8 +58,8 @@ def get_patch3d(x, pct:faiv.uniform=0.5, ps:int=64) -> np.ndarray:
 
 
 def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
-                 path:str='.', bs:int=32, device:Union[str,torch.device]="cpu", n_jobs=fai.defaults.cpus,
-                 val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None):
+                 val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
+                 n_jobs=fai.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None) -> faiv.ImageDataBunch:
     """ create a NIfTI databunch from two directories """
     src_fns = glob_nii(src_dir)
     tgt_fns = glob_nii(tgt_dir)
@@ -79,7 +78,8 @@ def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[C
         train_src, train_tgt = src.train, tgt.train
         valid_src, valid_tgt = src.valid, tgt.valid
     train_ll = fai.LabelList(train_src, train_tgt, tfms, tfm_y=True)
-    val_ll = fai.LabelList(valid_src, valid_tgt, tfms, tfm_y=True)
+    val_tfms = val_tfms or tfms
+    val_ll = fai.LabelList(valid_src, valid_tgt, val_tfms, tfm_y=True)
     ll = fai.LabelLists(path, train_ll, val_ll)
     idb = faiv.ImageDataBunch.create_from_ll(ll, bs=bs, device=device, num_workers=n_jobs)
     return idb
