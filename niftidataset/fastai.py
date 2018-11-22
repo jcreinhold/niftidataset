@@ -13,6 +13,7 @@ Created on: Nov 15, 2018
 __all__ = ['open_nii',
            'get_slice',
            'get_patch3d',
+           'NIfTIItemList',
            'niidatabunch']
 
 from functools import singledispatch
@@ -61,6 +62,11 @@ def get_patch3d(x, ps:int=64, h_pct:faiv.uniform=0.5, w_pct:faiv.uniform=0.5, d_
     return x[np.newaxis, i-ps//2:i+ps//2+o, j-ps//2:j+ps//2+o, k-ps//2:k+ps//2+o].contiguous()
 
 
+class NIfTIItemList(faiv.ImageToImageList):
+    """ custom item list for nifti files """
+    def open(self, fn:fai.PathOrStr)->faiv.Image: return open_nii(fn)
+
+
 def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
                  val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
                  n_jobs=fai.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
@@ -68,13 +74,13 @@ def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[C
     """ create a NIfTI databunch from two directories """
     use_val_dir = isinstance(val_src_dir, str) and isinstance(val_tgt_dir, str)
     src_fns, tgt_fns = __get_fns(src_dir, tgt_dir, bs, b_per_epoch, use_val_dir)
-    src = fai.ItemList(src_fns, create_func=open_nii)
-    tgt = fai.ItemList(tgt_fns, create_func=open_nii)
+    src = NIfTIItemList(src_fns)
+    tgt = NIfTIItemList(tgt_fns)
     if use_val_dir:
         train_src, train_tgt = src, tgt
         val_src_fns, val_tgt_fns = __get_fns(val_src_dir, val_tgt_dir, bs, 1, use_val_dir)
-        valid_src = fai.ItemList(val_src_fns, create_func=open_nii)
-        valid_tgt = fai.ItemList(val_tgt_fns, create_func=open_nii)
+        valid_src = NIfTIItemList(val_src_fns)
+        valid_tgt = NIfTIItemList(val_tgt_fns)
     else:
         val_idxs = np.random.choice(len(src_fns), int(split * len(src_fns)))
         src = src.split_by_idx(val_idxs)
@@ -82,8 +88,10 @@ def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[C
         train_src, train_tgt = src.train, tgt.train
         valid_src, valid_tgt = src.valid, tgt.valid
     train_ll = fai.LabelList(train_src, train_tgt, tfms, tfm_y=True)
+    train_ll.transform(tfms, tfm_y=True)
     val_tfms = val_tfms or tfms
     val_ll = fai.LabelList(valid_src, valid_tgt, val_tfms, tfm_y=True)
+    val_ll.transform(val_tfms, tfm_y=True)
     ll = fai.LabelLists(path, train_ll, val_ll)
     idb = faiv.ImageDataBunch.create_from_ll(ll, bs=bs, device=device, num_workers=n_jobs)
     return idb
