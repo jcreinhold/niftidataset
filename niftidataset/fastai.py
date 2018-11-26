@@ -62,7 +62,7 @@ def get_patch3d(x, ps:int=64, h_pct:faiv.uniform=0.5, w_pct:faiv.uniform=0.5, d_
     return x[np.newaxis, i-ps//2:i+ps//2+o, j-ps//2:j+ps//2+o, k-ps//2:k+ps//2+o].contiguous()
 
 
-class NIfTIItemList(faiv.ImageToImageList):
+class NIfTIItemList(faiv.ImageItemList):
     """ custom item list for nifti files """
     def open(self, fn:fai.PathOrStr)->faiv.Image: return open_nii(fn)
 
@@ -71,7 +71,7 @@ def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[C
                  val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
                  n_jobs=fai.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
                  b_per_epoch:int=1) -> faiv.ImageDataBunch:
-    """ create a NIfTI databunch from two directories """
+    """ create a NIfTI databunch from two directories, returns an image to image databunch """
     use_val_dir = isinstance(val_src_dir, str) and isinstance(val_tgt_dir, str)
     src_fns, tgt_fns = __get_fns(src_dir, tgt_dir, bs, b_per_epoch, use_val_dir)
     src = NIfTIItemList(src_fns)
