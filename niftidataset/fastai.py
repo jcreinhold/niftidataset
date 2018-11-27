@@ -13,6 +13,7 @@ Created on: Nov 15, 2018
 __all__ = ['open_nii',
            'get_slice',
            'get_patch3d',
+           'add_channel',
            'NIfTIItemList',
            'niidatabunch']
 
@@ -60,6 +61,13 @@ def get_patch3d(x, ps:int=64, h_pct:faiv.uniform=0.5, w_pct:faiv.uniform=0.5, d_
                for max_i, min_i, i in zip(max_idxs, min_idxs, s_idxs)]
     o = 0 if ps % 2 == 0 else 1
     return x[np.newaxis, i-ps//2:i+ps//2+o, j-ps//2:j+ps//2+o, k-ps//2:k+ps//2+o].contiguous()
+
+
+@faiv.TfmPixel
+@singledispatch
+def add_channel(x) -> torch.Tensor:
+    """" add channel to img (used when extracting whole image) """
+    return x[np.newaxis, ...].contiguous()
 
 
 class NIfTIItemList(faiv.ImageItemList):
