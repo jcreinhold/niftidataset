@@ -41,7 +41,7 @@ def open_nii(fn:str) -> faiv.Image:
 
 @faiv.TfmPixel
 @singledispatch
-def get_slice(x, pct:faiv.uniform=0.5, axis:int=0) -> torch.Tensor:
+def get_slice(x, pct:fai.uniform=0.5, axis:int=0) -> torch.Tensor:
     """" Get a random slice of `x` based on axis """
     s = int(x.size(axis) * pct)
     return x[np.newaxis,s,:,:].contiguous() if axis == 0 else \
@@ -51,7 +51,7 @@ def get_slice(x, pct:faiv.uniform=0.5, axis:int=0) -> torch.Tensor:
 
 @faiv.TfmPixel
 @singledispatch
-def get_patch3d(x, ps:int=64, h_pct:faiv.uniform=0.5, w_pct:faiv.uniform=0.5, d_pct:faiv.uniform=0.5) -> torch.Tensor:
+def get_patch3d(x, ps:int=64, h_pct:fai.uniform=0.5, w_pct:fai.uniform=0.5, d_pct:fai.uniform=0.5) -> torch.Tensor:
     """" Get a random 3d patch of `x` of size ps^3 """
     h, w, d = x.shape
     max_idxs = (h - ps // 2, w - ps // 2, d - ps // 2)
