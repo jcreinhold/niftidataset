@@ -15,13 +15,17 @@ __all__ = ['open_nii',
            'get_patch3d',
            'add_channel',
            'NIfTIItemList',
-           'niidatabunch']
+           'niidatabunch',
+           'open_tiff',
+           'TIFFImageList',
+           'tiffdatabunch',
+           'TIFFTupleList']
 
 from functools import singledispatch
 import logging
 import math
 from pathlib import PosixPath
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Union
 
 from PIL import Image
 import fastai as fai
@@ -30,7 +34,8 @@ import nibabel as nib
 import numpy as np
 import torch
 
-from .utils import glob_nii
+from .utils import glob_nii, glob_tiff
+from .errors import NiftiDatasetError
 
 logger = logging.getLogger(__name__)
 
@@ -82,15 +87,31 @@ def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[C
                  n_jobs=fai.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
                  b_per_epoch:int=1) -> faiv.ImageDataBunch:
     """ create a NIfTI databunch from two directories, returns an image to image databunch """
+    idb = __databunch(src_dir, tgt_dir, split, tfms, val_tfms, path, bs, device, n_jobs, val_src_dir, val_tgt_dir,
+                      b_per_epoch, type='nii')
+    return idb
+
+
+def __databunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
+                val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
+                n_jobs=fai.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
+                b_per_epoch:int=1, type:str='nii') -> faiv.ImageDataBunch:
+    """ create an X databunch from two directories, returns an image to image databunch """
+    if type == 'nii':
+        itemlist = NIfTIItemList
+    elif type == 'tif':
+        itemlist = TIFFImageList
+    else:
+        raise NiftiDatasetError('type needs to be either `nii` or `tif`')
     use_val_dir = isinstance(val_src_dir, str) and isinstance(val_tgt_dir, str)
-    src_fns, tgt_fns = __get_fns(src_dir, tgt_dir, bs, b_per_epoch, use_val_dir)
-    src = NIfTIItemList(src_fns)
-    tgt = NIfTIItemList(tgt_fns)
+    src_fns, tgt_fns = __get_fns(src_dir, tgt_dir, bs, b_per_epoch, use_val_dir, type)
+    src = itemlist(src_fns)
+    tgt = itemlist(tgt_fns)
     if use_val_dir:
         train_src, train_tgt = src, tgt
-        val_src_fns, val_tgt_fns = __get_fns(val_src_dir, val_tgt_dir, bs, 1, use_val_dir)
-        valid_src = NIfTIItemList(val_src_fns)
-        valid_tgt = NIfTIItemList(val_tgt_fns)
+        val_src_fns, val_tgt_fns = __get_fns(val_src_dir, val_tgt_dir, bs, 1, use_val_dir, type)
+        valid_src = itemlist(val_src_fns)
+        valid_tgt = itemlist(val_tgt_fns)
     else:
         val_idxs = np.random.choice(len(src_fns), int(split * len(src_fns)))
         src = src.split_by_idx(val_idxs)
@@ -107,10 +128,10 @@ def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[C
     return idb
 
 
-def __get_fns(src_dir:str, tgt_dir:str, bs:int, b_per_epoch:int, use_val_dir:bool):
+def __get_fns(src_dir:str, tgt_dir:str, bs:int, b_per_epoch:int, use_val_dir:bool, type:str):
     m = 1 if use_val_dir else 2
-    src_fns = glob_nii(src_dir)
-    tgt_fns = glob_nii(tgt_dir)
+    src_fns = glob_nii(src_dir) if type == 'nii' else glob_tiff(src_dir)
+    tgt_fns = glob_nii(tgt_dir) if type == 'nii' else glob_tiff(tgt_dir)
     if len(src_fns) != len(tgt_fns) or len(src_fns) == 0:
         raise ValueError(f'Number of source and target images must be equal and non-zero')
     if len(src_fns) < bs:
@@ -126,14 +147,23 @@ def __get_fns(src_dir:str, tgt_dir:str, bs:int, b_per_epoch:int, use_val_dir:boo
 ############## TIFF dataset classes and helper functions ##############
 
 def open_tiff(fn:fai.PathOrStr)->faiv.Image:
-    """ open a tif image and transform it into a fastai image """
-    x = np.asarray(Image.open(fn),dtype=np.float32)[None,...]
-    return faiv.Image(torch.Tensor(x))
+    """ open a 1 channel tif image and transform it into a fastai image """
+    return faiv.Image(torch.Tensor(np.asarray(Image.open(fn),dtype=np.float32)[None,...]))
 
 
 class TIFFImageList(faiv.ImageItemList):
     """ custom item list for TIFF files """
     def open(self, fn:fai.PathOrStr)->faiv.Image: return open_tiff(fn)
+
+
+def tiffdatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
+                  val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
+                  n_jobs=fai.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
+                  b_per_epoch:int=1) -> faiv.ImageDataBunch:
+    """ create a NIfTI databunch from two directories, returns an image to image databunch """
+    idb = __databunch(src_dir, tgt_dir, split, tfms, val_tfms, path, bs, device, n_jobs, val_src_dir, val_tgt_dir,
+                      b_per_epoch, type='tif')
+    return idb
 
 
 class ImageTuple(fai.ItemBase):
@@ -164,7 +194,7 @@ class TIFFTupleList(TIFFImageList):
 
     def get(self, i):
         img1 = super().get(i)
-        fn = self.itemsB[np.random.randint(0, len(self.itemsB)-1)]
+        fn = self.itemsB[i]
         return ImageTuple(img1, open_tiff(fn))
 
     def reconstruct(self, t:torch.Tensor):

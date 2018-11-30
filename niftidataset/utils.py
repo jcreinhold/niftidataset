@@ -11,7 +11,8 @@ Created on: Oct 24, 2018
 """
 
 __all__ = ['split_filename',
-           'glob_nii']
+           'glob_nii',
+           'glob_tiff']
 
 from typing import List, Tuple
 
@@ -33,4 +34,10 @@ def split_filename(filepath: str) -> Tuple[str, str, str]:
 def glob_nii(path: str) -> List[str]:
     """ grab all nifti files in a directory and sort them for consistency """
     fns = sorted(glob(os.path.join(path, '*.nii*')))
+    return fns
+
+
+def glob_tiff(path: str) -> List[str]:
+    """ grab all .tif or .tiff files in a directory and sort them for consistency """
+    fns = sorted(glob(os.path.join(path, '*.tif*')))
     return fns

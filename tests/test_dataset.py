@@ -106,7 +106,7 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds.valid_ds[0][0].shape, (1,64,64))
 
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
-    def test_tiff(self):
+    def test_tifftuplelist(self):
         from niftidataset.fastai import TIFFTupleList
         data = (TIFFTupleList.from_folders(PosixPath(self.train_dir), '1', '2', extensions=('.tif'))
                 .split_by_idx([])
@@ -114,6 +114,14 @@ class TestUtilities(unittest.TestCase):
                 .transform()
                 .databunch(bs=4))
         self.assertEqual(data.train_ds[0][0].data[0].shape, (1,256,256))
+        
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_tiffdatabunch(self):
+        from niftidataset.fastai import tiffdatabunch
+        tfms = []
+        myds = tiffdatabunch(self.train_dir+'/1/', self.train_dir+'/2/', tfms=tfms, split=0.5)
+        self.assertEqual(myds.train_ds[0][0].shape, (1,256,256))
+        self.assertEqual(myds.valid_ds[0][0].shape, (1,256,256))
 
     def tearDown(self):
         shutil.rmtree(self.out_dir)
