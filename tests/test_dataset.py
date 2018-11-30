@@ -10,7 +10,9 @@ Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 Created on: 01, 2018
 """
 
+from functools import partial
 import os
+from pathlib import PosixPath
 import shutil
 import tempfile
 import unittest
@@ -29,14 +31,20 @@ class TestUtilities(unittest.TestCase):
 
     def setUp(self):
         wd = os.path.dirname(os.path.abspath(__file__))
-        self.data_dir = os.path.join(wd, 'test_data', 'images')
+        self.nii_dir = os.path.join(wd, 'test_data', 'nii')
+        self.tif_dir = os.path.join(wd, 'test_data', 'tif')
         self.out_dir = tempfile.mkdtemp()
         self.train_dir = os.path.join(self.out_dir, 'train')
         os.mkdir(self.train_dir)
-        img = glob_nii(self.data_dir)[0]
-        path, base, ext = split_filename(img)
+        os.mkdir(os.path.join(self.train_dir, '1'))
+        os.mkdir(os.path.join(self.train_dir, '2'))
+        nii = glob_nii(self.nii_dir)[0]
+        tif = os.path.join(self.tif_dir, 'test.tif')
+        path, base, ext = split_filename(nii)
         for i in range(4):
-            shutil.copy(img, os.path.join(self.train_dir, base + str(i) + ext))
+            shutil.copy(nii, os.path.join(self.train_dir, base + str(i) + ext))
+            shutil.copy(tif, os.path.join(self.train_dir, '1', base + str(i) + '.tif'))
+            shutil.copy(tif, os.path.join(self.train_dir, '2', base + str(i) + '.tif'))
 
     def test_niftidataset_2d(self):
         composed = torch_tfms.Compose([RandomCrop2D(10, 0),
@@ -97,8 +105,18 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds.train_ds[0][0].shape, (1,64,64))
         self.assertEqual(myds.valid_ds[0][0].shape, (1,64,64))
 
+    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
+    def test_tiff(self):
+        from niftidataset.fastai import TIFFTupleList
+        data = (TIFFTupleList.from_folders(PosixPath(self.train_dir), '1', '2', extensions=('.tif'))
+                .split_by_idx([])
+                .label_const(0.)
+                .transform()
+                .databunch(bs=4))
+        self.assertEqual(data.train_ds[0][0].data[0].shape, (1,256,256))
+
     def tearDown(self):
-        pass
+        shutil.rmtree(self.out_dir)
 
 
 if __name__ == '__main__':

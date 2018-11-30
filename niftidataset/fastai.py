@@ -20,8 +20,10 @@ __all__ = ['open_nii',
 from functools import singledispatch
 import logging
 import math
-from typing import Callable, List, Optional, Union
+from pathlib import PosixPath
+from typing import Callable, List, Optional, Tuple, Union
 
+from PIL import Image
 import fastai as fai
 import fastai.vision as faiv
 import nibabel as nib
@@ -117,4 +119,61 @@ def __get_fns(src_dir:str, tgt_dir:str, bs:int, b_per_epoch:int, use_val_dir:boo
     if len(src_fns) // bs < b_per_epoch:
         src_fns = src_fns * b_per_epoch
         tgt_fns = tgt_fns * b_per_epoch
+    logger.debug(f'Number of batches per epoch: {len(src_fns) // bs}')
     return src_fns, tgt_fns
+
+
+############## TIFF dataset classes and helper functions ##############
+
+def open_tiff(fn:fai.PathOrStr)->faiv.Image:
+    """ open a tif image and transform it into a fastai image """
+    x = np.asarray(Image.open(fn),dtype=np.float32)[None,...]
+    return faiv.Image(torch.Tensor(x))
+
+
+class TIFFImageList(faiv.ImageItemList):
+    """ custom item list for TIFF files """
+    def open(self, fn:fai.PathOrStr)->faiv.Image: return open_tiff(fn)
+
+
+class ImageTuple(fai.ItemBase):
+    def __init__(self, img1, img2):
+        self.img1,self.img2 = img1,img2
+        self.obj,self.data = (img1,img2),[img1.data,img2.data]
+
+    def apply_tfms(self, tfms, **kwargs):
+        self.img1 = self.img1.apply_tfms(tfms, **kwargs)
+        self.img2 = self.img2.apply_tfms(tfms, **kwargs)
+        return self
+
+
+class TargetTupleList(fai.ItemList):
+    def reconstruct(self, t:torch.Tensor):
+        if len(t.size()) == 0: return t
+        return ImageTuple(faiv.Image(t[0]),faiv.Image(t[1]))
+
+
+class TIFFTupleList(TIFFImageList):
+    _label_cls = TargetTupleList
+    def __init__(self, items, itemsB=None, **kwargs):
+        self.itemsB = itemsB
+        super().__init__(items, **kwargs)
+
+    def new(self, items, **kwargs):
+        return super().new(items, itemsB=self.itemsB, **kwargs)
+
+    def get(self, i):
+        img1 = super().get(i)
+        fn = self.itemsB[np.random.randint(0, len(self.itemsB)-1)]
+        return ImageTuple(img1, open_tiff(fn))
+
+    def reconstruct(self, t:torch.Tensor):
+        return ImageTuple(faiv.Image(t[0]),faiv.Image(t[1]))
+
+    @classmethod
+    def from_folders(cls, path, folderA, folderB, **kwargs):
+        path = PosixPath(path)
+        itemsB = TIFFImageList.from_folder(path/folderB).items
+        res = super().from_folder(path/folderA, itemsB=itemsB, **kwargs)
+        res.path = path
+        return res
