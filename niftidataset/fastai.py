@@ -25,13 +25,14 @@ from functools import singledispatch
 import logging
 import math
 from pathlib import PosixPath
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional, Tuple, Union
 
-from PIL import Image
 import fastai as fai
 import fastai.vision as faiv
+import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
+from PIL import Image
 import torch
 
 from .utils import glob_nii, glob_tiff
@@ -176,6 +177,29 @@ class ImageTuple(fai.ItemBase):
         self.img2 = self.img2.apply_tfms(tfms, **kwargs)
         return self
 
+    def to_one(self):
+        return faiv.Image(torch.cat(self.data, 2))
+
+    def show_xys(self, xs, ys, figsize: Tuple[int, int] = (9, 10), **kwargs):
+        "Show the `xs` and `ys` on a figure of `figsize`. `kwargs` are passed to the show method."
+        rows = int(math.sqrt(len(xs)))
+        fig, axs = plt.subplots(rows, rows, figsize=figsize)
+        for i, ax in enumerate(axs.flatten() if rows > 1 else [axs]):
+            xs[i].show(ax=ax, y=ys[i], **kwargs)
+        plt.tight_layout()
+
+    def show_xyzs(self, xs, ys, zs, figsize: Tuple[int, int] = None, **kwargs):
+        """Show `xs` (inputs), `ys` (targets) and `zs` (predictions) on a figure of `figsize`. 
+        `kwargs` are passed to the show method."""
+        figsize = fai.ifnone(figsize, (6, 3 * len(xs)))
+        fig, axs = plt.subplots(len(xs), 2, figsize=figsize)
+        fig.suptitle('Ground truth / Predictions', weight='bold', size=14)
+        for i, (x, y, z) in enumerate(zip(xs, ys, zs)):
+            x.show(ax=axs[i, 0], y=y, **kwargs)
+            x.show(ax=axs[i, 1], y=z, **kwargs)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__} - im1:{tuple(self.img1.shape)}, im2:{tuple(self.img2.shape)}'
 
 class TargetTupleList(fai.ItemList):
     def reconstruct(self, t:torch.Tensor):
@@ -207,3 +231,21 @@ class TIFFTupleList(TIFFImageList):
         res = super().from_folder(path/folderA, itemsB=itemsB, **kwargs)
         res.path = path
         return res
+
+    def show_xys(self, xs, ys, figsize:Tuple[int,int]=(12,6), **kwargs):
+        "Show the `xs` and `ys` on a figure of `figsize`. `kwargs` are passed to the show method."
+        rows = int(math.sqrt(len(xs)))
+        fig, axs = plt.subplots(rows,rows,figsize=figsize)
+        for i, ax in enumerate(axs.flatten() if rows > 1 else [axs]):
+            xs[i].to_one().show(ax=ax, **kwargs)
+        plt.tight_layout()
+
+    def show_xyzs(self, xs, ys, zs, figsize:Tuple[int,int]=None, **kwargs):
+        """Show `xs` (inputs), `ys` (targets) and `zs` (predictions) on a figure of `figsize`.
+        `kwargs` are passed to the show method."""
+        figsize = fai.ifnone(figsize, (12,3*len(xs)))
+        fig,axs = plt.subplots(len(xs), 2, figsize=figsize)
+        fig.suptitle('Ground truth / Predictions', weight='bold', size=14)
+        for i,(x,z) in enumerate(zip(xs,zs)):
+            x.to_one().show(ax=axs[i,0], **kwargs)
+            z.to_one().show(ax=axs[i,1], **kwargs)

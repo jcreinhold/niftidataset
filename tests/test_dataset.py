@@ -108,11 +108,14 @@ class TestUtilities(unittest.TestCase):
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_tifftuplelist(self):
         from niftidataset.fastai import TIFFTupleList
-        data = (TIFFTupleList.from_folders(PosixPath(self.train_dir), '1', '2', extensions=('.tif'))
-                .split_by_idx([])
-                .label_const(0.)
-                .transform()
-                .databunch(bs=4))
+        data = (TIFFTupleList.from_folders(self.train_dir, '1', '2', extensions=('.tif'))
+                             .split_by_idx([])
+                             .label_const(0.)
+                             .transform()
+                             .databunch(bs=4))
+        data.valid_dl = None
+        print(data.train_ds[0])
+        data.show_batch(rows=1)
         self.assertEqual(data.train_ds[0][0].data[0].shape, (1,256,256))
         
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
