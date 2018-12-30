@@ -27,7 +27,6 @@ import math
 from pathlib import PosixPath
 from typing import Callable, List, Optional, Tuple, Union
 
-import fastai as fai
 import fastai.vision as faiv
 import matplotlib.pyplot as plt
 import nibabel as nib
@@ -49,7 +48,7 @@ def open_nii(fn:str) -> faiv.Image:
 
 @faiv.TfmPixel
 @singledispatch
-def get_slice(x, pct:fai.uniform=0.5, axis:int=0) -> torch.Tensor:
+def get_slice(x, pct:faiv.uniform=0.5, axis:int=0) -> torch.Tensor:
     """" Get a random slice of `x` based on axis """
     s = int(x.size(axis) * pct)
     return x[np.newaxis,s,:,:].contiguous() if axis == 0 else \
@@ -59,7 +58,7 @@ def get_slice(x, pct:fai.uniform=0.5, axis:int=0) -> torch.Tensor:
 
 @faiv.TfmPixel
 @singledispatch
-def get_patch3d(x, ps:int=64, h_pct:fai.uniform=0.5, w_pct:fai.uniform=0.5, d_pct:fai.uniform=0.5) -> torch.Tensor:
+def get_patch3d(x, ps:int=64, h_pct:faiv.uniform=0.5, w_pct:faiv.uniform=0.5, d_pct:faiv.uniform=0.5) -> torch.Tensor:
     """" Get a random 3d patch of `x` of size ps^3 """
     h, w, d = x.shape
     max_idxs = (h - ps // 2, w - ps // 2, d - ps // 2)
@@ -80,12 +79,12 @@ def add_channel(x) -> torch.Tensor:
 
 class NIfTIItemList(faiv.ImageItemList):
     """ custom item list for nifti files """
-    def open(self, fn:fai.PathOrStr)->faiv.Image: return open_nii(fn)
+    def open(self, fn:faiv.PathOrStr)->faiv.Image: return open_nii(fn)
 
 
 def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
                  val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
-                 n_jobs=fai.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
+                 n_jobs=faiv.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
                  b_per_epoch:int=1) -> faiv.ImageDataBunch:
     """ create a NIfTI databunch from two directories, returns an image to image databunch """
     idb = __databunch(src_dir, tgt_dir, split, tfms, val_tfms, path, bs, device, n_jobs, val_src_dir, val_tgt_dir,
@@ -95,7 +94,7 @@ def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[C
 
 def __databunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
                 val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
-                n_jobs=fai.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
+                n_jobs=faiv.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
                 b_per_epoch:int=1, type:str='nii') -> faiv.ImageDataBunch:
     """ create an X databunch from two directories, returns an image to image databunch """
     if type == 'nii':
@@ -119,12 +118,12 @@ def __databunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Ca
         tgt = tgt.split_by_idx(val_idxs)
         train_src, train_tgt = src.train, tgt.train
         valid_src, valid_tgt = src.valid, tgt.valid
-    train_ll = fai.LabelList(train_src, train_tgt, tfms, tfm_y=True)
+    train_ll = faiv.LabelList(train_src, train_tgt, tfms, tfm_y=True)
     train_ll.transform(tfms, tfm_y=True)
     val_tfms = val_tfms or tfms
-    val_ll = fai.LabelList(valid_src, valid_tgt, val_tfms, tfm_y=True)
+    val_ll = faiv.LabelList(valid_src, valid_tgt, val_tfms, tfm_y=True)
     val_ll.transform(val_tfms, tfm_y=True)
-    ll = fai.LabelLists(path, train_ll, val_ll)
+    ll = faiv.LabelLists(path, train_ll, val_ll)
     idb = faiv.ImageDataBunch.create_from_ll(ll, bs=bs, device=device, num_workers=n_jobs)
     return idb
 
@@ -147,19 +146,19 @@ def __get_fns(src_dir:str, tgt_dir:str, bs:int, b_per_epoch:int, use_val_dir:boo
 
 ############## TIFF dataset classes and helper functions ##############
 
-def open_tiff(fn:fai.PathOrStr)->faiv.Image:
+def open_tiff(fn:faiv.PathOrStr)->faiv.Image:
     """ open a 1 channel tif image and transform it into a fastai image """
     return faiv.Image(torch.Tensor(np.asarray(Image.open(fn),dtype=np.float32)[None,...]))
 
 
 class TIFFImageList(faiv.ImageItemList):
     """ custom item list for TIFF files """
-    def open(self, fn:fai.PathOrStr)->faiv.Image: return open_tiff(fn)
+    def open(self, fn:faiv.PathOrStr)->faiv.Image: return open_tiff(fn)
 
 
 def tiffdatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
                   val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
-                  n_jobs=fai.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
+                  n_jobs=faiv.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
                   b_per_epoch:int=1) -> faiv.ImageDataBunch:
     """ create a NIfTI databunch from two directories, returns an image to image databunch """
     idb = __databunch(src_dir, tgt_dir, split, tfms, val_tfms, path, bs, device, n_jobs, val_src_dir, val_tgt_dir,
@@ -167,7 +166,7 @@ def tiffdatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[
     return idb
 
 
-class ImageTuple(fai.ItemBase):
+class ImageTuple(faiv.ItemBase):
     def __init__(self, img1, img2):
         self.img1,self.img2 = img1,img2
         self.obj,self.data = (img1,img2),[img1.data,img2.data]
@@ -191,7 +190,7 @@ class ImageTuple(fai.ItemBase):
     def show_xyzs(self, xs, ys, zs, figsize: Tuple[int, int] = None, **kwargs):
         """Show `xs` (inputs), `ys` (targets) and `zs` (predictions) on a figure of `figsize`. 
         `kwargs` are passed to the show method."""
-        figsize = fai.ifnone(figsize, (6, 3 * len(xs)))
+        figsize = faiv.ifnone(figsize, (6, 3 * len(xs)))
         fig, axs = plt.subplots(len(xs), 2, figsize=figsize)
         fig.suptitle('Ground truth / Predictions', weight='bold', size=14)
         for i, (x, y, z) in enumerate(zip(xs, ys, zs)):
@@ -201,7 +200,7 @@ class ImageTuple(fai.ItemBase):
     def __repr__(self):
         return f'{self.__class__.__name__} - im1:{tuple(self.img1.shape)}, im2:{tuple(self.img2.shape)}'
 
-class TargetTupleList(fai.ItemList):
+class TargetTupleList(faiv.ItemList):
     def reconstruct(self, t:torch.Tensor):
         if len(t.size()) == 0: return t
         return ImageTuple(faiv.Image(t[0]),faiv.Image(t[1]))
@@ -243,7 +242,7 @@ class TIFFTupleList(TIFFImageList):
     def show_xyzs(self, xs, ys, zs, figsize:Tuple[int,int]=None, **kwargs):
         """Show `xs` (inputs), `ys` (targets) and `zs` (predictions) on a figure of `figsize`.
         `kwargs` are passed to the show method."""
-        figsize = fai.ifnone(figsize, (12,3*len(xs)))
+        figsize = faiv.ifnone(figsize, (12,3*len(xs)))
         fig,axs = plt.subplots(len(xs), 2, figsize=figsize)
         fig.suptitle('Ground truth / Predictions', weight='bold', size=14)
         for i,(x,z) in enumerate(zip(xs,zs)):
