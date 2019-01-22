@@ -18,7 +18,7 @@ __all__ = ['RandomCrop2D',
            'AddChannel',
            'Normalize']
 
-from typing import Union, Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -27,7 +27,7 @@ import torch
 class CropBase:
     """ base class for crop transform """
 
-    def __init__(self, out_dim: int, output_size: Union[tuple, int]):
+    def __init__(self, out_dim:int, output_size:Union[tuple,int]):
         """ provide the common functionality for RandomCrop2D and RandomCrop3D """
         assert isinstance(output_size, (int, tuple))
         if isinstance(output_size, int):
@@ -39,7 +39,7 @@ class CropBase:
             self.output_size = output_size
         self.out_dim = out_dim
 
-    def _get_sample_idxs(self, img: np.ndarray, mask: Optional[np.ndarray]=None) -> Tuple[int, int, int]:
+    def _get_sample_idxs(self, img:np.ndarray, mask:Optional[np.ndarray]=None) -> Tuple[int,int,int]:
         """ get the set of indices from which to sample (foreground) """
         mask = np.where(img > img.mean())  # returns a tuple of length 3
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
@@ -59,7 +59,7 @@ class RandomCrop2D(CropBase):
         include_neighbors (bool): extract 3 neighboring slices instead of just 1
     """
 
-    def __init__(self, output_size: Union[tuple, int], axis: Union[int, None]=0,
+    def __init__(self, output_size:Union[tuple, int], axis:Union[int, None]=0,
                  include_neighbors: bool= False) -> None:
         if axis is not None:
             assert axis <= 2
@@ -67,7 +67,7 @@ class RandomCrop2D(CropBase):
         self.axis = axis
         self.include_neighbors = include_neighbors
 
-    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+    def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         axis = self.axis if self.axis is not None else np.random.randint(0, 3)
         src, tgt = sample
         assert src.shape == tgt.shape and src.ndim == 3
@@ -86,7 +86,7 @@ class RandomCrop2D(CropBase):
         t = self.__get_slice(tgt, idxs, axis)
         return s, t
 
-    def __get_slice(self, img: np.ndarray, idxs: Tuple[int,int,int], axis: int) -> np.ndarray:
+    def __get_slice(self, img:np.ndarray, idxs:Tuple[int,int,int], axis:int) -> np.ndarray:
         h, w = self.output_size
         n = 1 if self.include_neighbors else 0
         oh = 0 if h % 2 == 0 else 1
@@ -113,10 +113,10 @@ class RandomCrop3D(CropBase):
             If int, cube crop is made.
     """
 
-    def __init__(self, output_size: Union[tuple, int]):
+    def __init__(self, output_size:Union[tuple,int]):
         super().__init__(3, output_size)
 
-    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+    def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         src, tgt = sample
         assert src.shape == tgt.shape
         h, w, d = src.shape
@@ -144,24 +144,24 @@ class RandomSlice:
             the higher this value, the more background will be "valid"
     """
 
-    def __init__(self, axis: int=0, div: float=2):
+    def __init__(self, axis:int=0, div:float=2):
         self.axis = axis
         self.div = div
 
-    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+    def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         src, tgt = sample
-        idx = np.random.choice(self.__valid_idxs(src)[self.axis])
-        s = self.__get_slice(src, idx)
-        t = self.__get_slice(tgt, idx)
+        idx = np.random.choice(self._valid_idxs(src)[self.axis])
+        s = self._get_slice(src, idx)
+        t = self._get_slice(tgt, idx)
         return s, t
 
-    def __get_slice(self, img: np.ndarray, idx: int):
+    def _get_slice(self, img:np.ndarray, idx:int):
         s = img[idx,:,:] if self.axis == 0 else \
             img[:,idx,:] if self.axis == 1 else \
             img[:,:,idx]
         return s
 
-    def __valid_idxs(self, img: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _valid_idxs(self, img:np.ndarray) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
         """ get the set of indices from which to sample (foreground) """
         mask = np.where(img > img.mean() / self.div)  # returns a tuple of length 3
         h, w, d = [np.arange(np.min(m), np.max(m)+1) for m in mask]  # pull out the valid idx ranges
@@ -171,7 +171,7 @@ class RandomSlice:
 class ToTensor:
     """ Convert ndarrays in sample to Tensors """
 
-    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[torch.Tensor,torch.Tensor]:
         src, tgt = sample
         assert src.shape == tgt.shape
         return (torch.from_numpy(src), torch.from_numpy(tgt))
@@ -184,7 +184,7 @@ class ToFastaiImage:
         from fastai.vision import Image
         self.Image = Image
 
-    def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]):
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         x, y = sample
         return self.Image(x), self.Image(y)
 
@@ -192,7 +192,7 @@ class ToFastaiImage:
 class AddChannel:
     """ Add empty first dimension to sample """
 
-    def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]) -> Tuple[torch.Tensor,torch.Tensor]:
         src, tgt = sample
         assert src.shape == tgt.shape
         return (src.unsqueeze(0), tgt.unsqueeze(0))
@@ -201,7 +201,7 @@ class AddChannel:
 class Normalize:
     """ put data in range of 0 to 1 """
 
-    def __call__(self, sample: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+    def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         x, y = sample
         x = (x - x.min()) / (x.max() - x.min())
         y = (y - y.min()) / (y.max() - y.min())
