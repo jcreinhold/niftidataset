@@ -17,7 +17,7 @@ __all__ = ['open_nii',
            'NiftiImageList',
            'NiftiNiftiList',
            'open_tiff',
-           'TIFFImageList',
+           'TiffImageList',
            'TiffTiffList',
            'TIFFTupleList']
 
@@ -91,12 +91,12 @@ def open_tiff(fn:faiv.PathOrStr)->faiv.Image:
     return faiv.Image(torch.Tensor(np.asarray(Image.open(fn),dtype=np.float32)[None,...]))
 
 
-class TIFFImageList(faiv.ImageItemList):
+class TiffImageList(faiv.ImageItemList):
     """ custom item list for TIFF files """
     def open(self, fn:faiv.PathOrStr)->faiv.Image: return open_tiff(fn)
 
-class TiffTiffList(TIFFImageList):
-    _label_cls = TIFFImageList
+class TiffTiffList(TiffImageList):
+    _label_cls = TiffImageList
 
 ####### The below are for prototypes and should probably be avoided #########
 

@@ -18,13 +18,13 @@ import os
 import sys
 
 MOCK_MODULES = ['torch', 'torch.utils', 'torch.utils.data', 'torch.utils.data.dataset', 'numpy', 'nibabel',
-                'fastai','fastai.vision', 'PIL',',matplotlib','matplotlib.pyplot']
+                'fastai','fastai.vision', 'PIL',',matplotlib','matplotlib.pyplot','typing']
 
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
 # this should not be needed with the above, but meh
-autodoc_mock_imports = ['nibabel','numpy', 'torch','fastai','PIL','matplotlib']
+autodoc_mock_imports = ['nibabel','numpy', 'torch','fastai','PIL','matplotlib','typing']
 
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
@@ -43,7 +43,7 @@ author = 'Jacob Reinhold'
 # The short X.Y version
 version = '0.1'
 # The full version, including alpha/beta/rc tags
-release = '0.1.2'
+release = '0.1.3'
 
 
 # -- General configuration ---------------------------------------------------
