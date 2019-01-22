@@ -14,18 +14,18 @@ __all__ = ['open_nii',
            'get_slice',
            'get_patch3d',
            'add_channel',
-           'NIfTIItemList',
-           'niidatabunch',
+           'NiftiImageList',
+           'NiftiNiftiList',
            'open_tiff',
            'TIFFImageList',
-           'tiffdatabunch',
+           'TiffTiffList',
            'TIFFTupleList']
 
 from functools import singledispatch
 import logging
 import math
 from pathlib import PosixPath
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Tuple
 
 import fastai.vision as faiv
 import matplotlib.pyplot as plt
@@ -33,9 +33,6 @@ import nibabel as nib
 import numpy as np
 from PIL import Image
 import torch
-
-from .utils import glob_nii, glob_tiff
-from .errors import NiftiDatasetError
 
 logger = logging.getLogger(__name__)
 
@@ -77,71 +74,14 @@ def add_channel(x) -> torch.Tensor:
     return x[np.newaxis, ...].contiguous()
 
 
-class NIfTIItemList(faiv.ImageItemList):
+class NiftiImageList(faiv.ImageItemList):
     """ custom item list for nifti files """
     def open(self, fn:faiv.PathOrStr)->faiv.Image: return open_nii(fn)
 
 
-def niidatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
-                 val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
-                 n_jobs=faiv.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
-                 b_per_epoch:int=1) -> faiv.ImageDataBunch:
-    """ create a NIfTI databunch from two directories, returns an image to image databunch """
-    idb = __databunch(src_dir, tgt_dir, split, tfms, val_tfms, path, bs, device, n_jobs, val_src_dir, val_tgt_dir,
-                      b_per_epoch, type='nii')
-    return idb
-
-
-def __databunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
-                val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
-                n_jobs=faiv.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
-                b_per_epoch:int=1, type:str='nii') -> faiv.ImageDataBunch:
-    """ create an X databunch from two directories, returns an image to image databunch """
-    if type == 'nii':
-        itemlist = NIfTIItemList
-    elif type == 'tif':
-        itemlist = TIFFImageList
-    else:
-        raise NiftiDatasetError('type needs to be either `nii` or `tif`')
-    use_val_dir = isinstance(val_src_dir, str) and isinstance(val_tgt_dir, str)
-    src_fns, tgt_fns = __get_fns(src_dir, tgt_dir, bs, b_per_epoch, use_val_dir, type)
-    src = itemlist(src_fns)
-    tgt = itemlist(tgt_fns)
-    if use_val_dir:
-        train_src, train_tgt = src, tgt
-        val_src_fns, val_tgt_fns = __get_fns(val_src_dir, val_tgt_dir, bs, 1, use_val_dir, type)
-        valid_src = itemlist(val_src_fns)
-        valid_tgt = itemlist(val_tgt_fns)
-    else:
-        val_idxs = np.random.choice(len(src_fns), int(split * len(src_fns)))
-        src = src.split_by_idx(val_idxs)
-        tgt = tgt.split_by_idx(val_idxs)
-        train_src, train_tgt = src.train, tgt.train
-        valid_src, valid_tgt = src.valid, tgt.valid
-    train_ll = faiv.LabelList(train_src, train_tgt, tfms, tfm_y=True)
-    train_ll.transform(tfms, tfm_y=True)
-    val_tfms = val_tfms or tfms
-    val_ll = faiv.LabelList(valid_src, valid_tgt, val_tfms, tfm_y=True)
-    val_ll.transform(val_tfms, tfm_y=True)
-    ll = faiv.LabelLists(path, train_ll, val_ll)
-    idb = faiv.ImageDataBunch.create_from_ll(ll, bs=bs, device=device, num_workers=n_jobs)
-    return idb
-
-
-def __get_fns(src_dir:str, tgt_dir:str, bs:int, b_per_epoch:int, use_val_dir:bool, type:str):
-    m = 1 if use_val_dir else 2
-    src_fns = glob_nii(src_dir) if type == 'nii' else glob_tiff(src_dir)
-    tgt_fns = glob_nii(tgt_dir) if type == 'nii' else glob_tiff(tgt_dir)
-    if len(src_fns) != len(tgt_fns) or len(src_fns) == 0:
-        raise ValueError(f'Number of source and target images must be equal and non-zero')
-    if len(src_fns) < bs:
-        src_fns = src_fns * math.ceil(bs / len(src_fns)) * m
-        tgt_fns = tgt_fns * math.ceil(bs / len(tgt_fns)) * m
-    if len(src_fns) // bs < b_per_epoch:
-        src_fns = src_fns * b_per_epoch
-        tgt_fns = tgt_fns * b_per_epoch
-    logger.debug(f'Number of batches per epoch: {len(src_fns) // bs}')
-    return src_fns, tgt_fns
+class NiftiNiftiList(NiftiImageList):
+    """ item list suitable for synthesis tasks """
+    _label_cls = NiftiImageList
 
 
 ############## TIFF dataset classes and helper functions ##############
@@ -155,16 +95,10 @@ class TIFFImageList(faiv.ImageItemList):
     """ custom item list for TIFF files """
     def open(self, fn:faiv.PathOrStr)->faiv.Image: return open_tiff(fn)
 
+class TiffTiffList(TIFFImageList):
+    _label_cls = TIFFImageList
 
-def tiffdatabunch(src_dir:str, tgt_dir:str, split:float=0.2, tfms:Optional[List[Callable]]=None,
-                  val_tfms:Optional[List[Callable]]=None, path:str='.', bs:int=32, device:Union[str,torch.device]="cpu",
-                  n_jobs=faiv.defaults.cpus, val_src_dir:Optional[str]=None, val_tgt_dir:Optional[str]=None,
-                  b_per_epoch:int=1) -> faiv.ImageDataBunch:
-    """ create a NIfTI databunch from two directories, returns an image to image databunch """
-    idb = __databunch(src_dir, tgt_dir, split, tfms, val_tfms, path, bs, device, n_jobs, val_src_dir, val_tgt_dir,
-                      b_per_epoch, type='tif')
-    return idb
-
+####### The below are for prototypes and should probably be avoided #########
 
 class ImageTuple(faiv.ItemBase):
     def __init__(self, img1, img2):

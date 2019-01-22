@@ -21,7 +21,7 @@ install:
   - pip --version
   # coveralls requires coverage==4.0.3, recent versions of pytest-cov require coverage>=4.4
   - travis_retry conda install numpy --yes
-  - travis_retry conda install pytorch torchvision fastai==1.0.39 -c pytorch -c fastai --yes
+  - travis_retry conda install pytorch torchvision fastai==1.0.41 -c pytorch -c fastai --yes
   - travis_retry conda install nibabel -c conda-forge --yes
   - travis_retry pip install coverage==4.0.3 nose pytest-pep8 pytest-cov==2.5.1 python-coveralls
   - travis_retry python setup.py install

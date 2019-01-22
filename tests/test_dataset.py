@@ -111,29 +111,6 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds[0][0].shape, (1,10,10))
 
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
-    def test_niidatabunch_2d(self):
-        from niftidataset.fastai import get_slice, niidatabunch
-        tfms = [get_slice()]
-        myds = niidatabunch(self.train_dir, self.train_dir, tfms=tfms, split=0.5)
-        self.assertEqual(myds.train_ds[0][0].shape, (1,64,64))
-
-    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
-    def test_niidatabunch_3d(self):
-        from niftidataset.fastai import get_patch3d, niidatabunch
-        tfms = [get_patch3d(ps=10)]
-        myds = niidatabunch(self.train_dir, self.train_dir, tfms=tfms, split=0.5)
-        self.assertEqual(myds.train_ds[0][0].shape, (1,10,10,10))
-
-    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
-    def test_niidatabunch_valid_dir(self):
-        from niftidataset.fastai import get_slice, niidatabunch
-        tfms = [get_slice()]
-        myds = niidatabunch(self.train_dir, self.train_dir, tfms=tfms, split=0.5,
-                            val_src_dir=self.train_dir, val_tgt_dir=self.train_dir)
-        self.assertEqual(myds.train_ds[0][0].shape, (1,64,64))
-        self.assertEqual(myds.valid_ds[0][0].shape, (1,64,64))
-
-    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_tifftuplelist(self):
         from niftidataset.fastai import TIFFTupleList
         data = (TIFFTupleList.from_folders(self.train_dir, '1', '2', extensions=('.tif'))
@@ -146,14 +123,6 @@ class TestUtilities(unittest.TestCase):
         data.show_batch(rows=1)
         self.assertEqual(data.train_ds[0][0].data[0].shape, (1,256,256))
         
-    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
-    def test_tiffdatabunch(self):
-        from niftidataset.fastai import tiffdatabunch
-        tfms = []
-        myds = tiffdatabunch(self.train_dir+'/1/', self.train_dir+'/2/', tfms=tfms, split=0.5)
-        self.assertEqual(myds.train_ds[0][0].shape, (1,256,256))
-        self.assertEqual(myds.valid_ds[0][0].shape, (1,256,256))
-
     def tearDown(self):
         shutil.rmtree(self.out_dir)
 
