@@ -1,18 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-tests.test_utilities
+tests.test_dataset
 
-test the functions located in utilities submodule for runtime errors
+test submodules for runtime errors
 
 Author: Jacob Reinhold (jacob.reinhold@jhu.edu)
 
-Created on: 01, 2018
+Created on: Oct 24, 2018
 """
 
-from functools import partial
 import os
-from pathlib import PosixPath
 import shutil
 import tempfile
 import unittest
@@ -55,17 +53,15 @@ class TestUtilities(unittest.TestCase):
 
     def test_niftidataset_2d_slice(self):
         composed = torch_tfms.Compose([RandomSlice(0),
-                                       ToTensor(),
-                                       AddChannel()])
+                                       ToTensor()])
         myds = NiftiDataset(self.train_dir, self.train_dir, composed)
         self.assertEqual(myds[0][0].shape, (1,64,64))
 
     def test_niftidataset_3d(self):
         composed = torch_tfms.Compose([RandomCrop3D(10),
-                                       ToTensor(),
-                                       AddChannel()])
+                                       ToTensor()])
         myds = NiftiDataset(self.train_dir, self.train_dir, composed)
-        self.assertEqual(myds[0][0].shape, (1,1,10,10,10))
+        self.assertEqual(myds[0][0].shape, (1,10,10,10))
 
     def test_niftidataset_preload(self):
         composed = torch_tfms.Compose([RandomCrop3D(10),
@@ -73,7 +69,39 @@ class TestUtilities(unittest.TestCase):
                                        AddChannel()])
         myds = NiftiDataset(self.train_dir, self.train_dir, composed, preload=True)
         self.assertEqual(myds[0][0].shape, (1,1,10,10,10))
+        
+    def test_multimodalnifti_2d(self):
+        composed = torch_tfms.Compose([RandomCrop2D(10, 0),
+                                       ToTensor(),
+                                       Normalize()])
+        sd, td = [self.train_dir] * 3, [self.train_dir]
+        myds = MultimodalNiftiDataset(sd, td, composed)
+        self.assertEqual(myds[0][0].shape, (3,10,10))
+        self.assertEqual(myds[0][1].shape, (1,10,10))
 
+    def test_multimodalnifti_slice(self):
+       composed = torch_tfms.Compose([RandomSlice(0),
+                                      ToTensor()])
+       sd, td = [self.train_dir] * 2, [self.train_dir] * 4
+       myds = MultimodalNiftiDataset(sd, td, composed)
+       self.assertEqual(myds[0][0].shape, (2,64,64))
+       self.assertEqual(myds[0][1].shape, (4,64,64))
+
+    def test_multimodalnifti_3d(self):
+        composed = torch_tfms.Compose([RandomCrop3D(10),
+                                       ToTensor()])
+        sd, td = [self.train_dir] * 3, [self.train_dir] * 2
+        myds = MultimodalNiftiDataset(sd, td, composed)
+        self.assertEqual(myds[0][0].shape, (3,10,10,10))
+        self.assertEqual(myds[0][1].shape, (2,10,10,10))
+    
+    def test_multimodaltiff(self):
+        composed = torch_tfms.Compose([ToTensor()])
+        sd, td = [self.train_dir+'/1/'] * 3, [self.train_dir+'/2/'] * 2
+        myds = MultimodalTiffDataset(sd, td, composed)
+        self.assertEqual(myds[0][0].shape, (3,256,256))
+        self.assertEqual(myds[0][1].shape, (2,256,256))
+   
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_niftidataset_2d_fastai(self):
         composed = torch_tfms.Compose([RandomCrop2D(10, 0),
@@ -109,7 +137,7 @@ class TestUtilities(unittest.TestCase):
     def test_tifftuplelist(self):
         from niftidataset.fastai import TIFFTupleList
         data = (TIFFTupleList.from_folders(self.train_dir, '1', '2', extensions=('.tif'))
-                             .split_by_idx([])
+                             .no_split()
                              .label_const(0.)
                              .transform()
                              .databunch(bs=4))

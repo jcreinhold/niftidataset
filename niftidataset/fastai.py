@@ -200,6 +200,7 @@ class ImageTuple(faiv.ItemBase):
     def __repr__(self):
         return f'{self.__class__.__name__} - im1:{tuple(self.img1.shape)}, im2:{tuple(self.img2.shape)}'
 
+
 class TargetTupleList(faiv.ItemList):
     def reconstruct(self, t:torch.Tensor):
         if len(t.size()) == 0: return t
