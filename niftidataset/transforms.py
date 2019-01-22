@@ -18,7 +18,7 @@ __all__ = ['RandomCrop2D',
            'AddChannel',
            'Normalize']
 
-from typing import Optional, Tuple, Union
+from typing import Tuple, Union
 
 import numpy as np
 import torch
@@ -39,7 +39,7 @@ class CropBase:
             self.output_size = output_size
         self.out_dim = out_dim
 
-    def _get_sample_idxs(self, img:np.ndarray, mask:Optional[np.ndarray]=None) -> Tuple[int,int,int]:
+    def _get_sample_idxs(self, img:np.ndarray) -> Tuple[int,int,int]:
         """ get the set of indices from which to sample (foreground) """
         mask = np.where(img > img.mean())  # returns a tuple of length 3
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
@@ -60,9 +60,9 @@ class RandomCrop2D(CropBase):
     """
 
     def __init__(self, output_size:Union[tuple, int], axis:Union[int, None]=0,
-                 include_neighbors: bool= False) -> None:
+                 include_neighbors:bool=False) -> None:
         if axis is not None:
-            assert axis <= 2
+            assert 0 <= axis <= 2
         super().__init__(2, output_size)
         self.axis = axis
         self.include_neighbors = include_neighbors
@@ -70,8 +70,8 @@ class RandomCrop2D(CropBase):
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         axis = self.axis if self.axis is not None else np.random.randint(0, 3)
         src, tgt = sample
-        assert src.shape == tgt.shape and src.ndim == 3
-        h, w, d = src.shape
+        *cs, h, w, d = src.shape
+        *ct, _, _, _ = src.shape
         new_h, new_w = self.output_size
         max_idxs = (np.inf, w - new_h//2, d - new_w//2) if axis == 0 else \
                    (h - new_h//2, np.inf, d - new_w//2) if axis == 1 else \
@@ -79,28 +79,29 @@ class RandomCrop2D(CropBase):
         min_idxs = (-np.inf, new_h//2, new_w//2) if axis == 0 else \
                    (new_h//2, -np.inf, new_w//2) if axis == 1 else \
                    (new_h//2, new_w//2, -np.inf)
-        s_idxs = super()._get_sample_idxs(src)
+        s = src[0] if len(cs) > 0 else src  # use the first image to determine sampling if multimodal
+        s_idxs = super()._get_sample_idxs(s)
         idxs = [i if min_i <= i <= max_i else max_i if i > max_i else min_i
                 for max_i, min_i, i in zip(max_idxs, min_idxs, s_idxs)]
-        s = self.__get_slice(src, idxs, axis)
-        t = self.__get_slice(tgt, idxs, axis)
+        s = self._get_slice(src, idxs, axis).squeeze()
+        t = self._get_slice(tgt, idxs, axis).squeeze()
+        if len(cs) == 0 or s.ndim == 2: s = s[np.newaxis,...]  # add channel axis if empty
+        if len(ct) == 0 or t.ndim == 2: t = t[np.newaxis,...]
         return s, t
 
-    def __get_slice(self, img:np.ndarray, idxs:Tuple[int,int,int], axis:int) -> np.ndarray:
+    def _get_slice(self, img:np.ndarray, idxs:Tuple[int,int,int], axis:int) -> np.ndarray:
         h, w = self.output_size
         n = 1 if self.include_neighbors else 0
         oh = 0 if h % 2 == 0 else 1
         ow = 0 if w % 2 == 0 else 1
         i, j, k = idxs
-        s = img[i-n:i+1+n, j-h//2:j+h//2+oh, k-w//2:k+w//2+ow] if axis == 0 else \
-            img[i-h//2:i+h//2+oh, j-n:j+1+n, k-w//2:k+w//2+ow] if axis == 1 else \
-            img[i-h//2:i+h//2+oh, j-w//2:j+w//2+ow, k-n:k+1+n]
+        s = img[..., i-n:i+1+n, j-h//2:j+h//2+oh, k-w//2:k+w//2+ow] if axis == 0 else \
+            img[..., i-h//2:i+h//2+oh, j-n:j+1+n, k-w//2:k+w//2+ow] if axis == 1 else \
+            img[..., i-h//2:i+h//2+oh, j-w//2:j+w//2+ow, k-n:k+1+n]
         if self.include_neighbors:
             s = np.transpose(s, (0,1,2)) if axis == 0 else \
                 np.transpose(s, (1,0,2)) if axis == 1 else \
                 np.transpose(s, (2,0,1))
-        else:
-            s = np.squeeze(s)[np.newaxis, ...]  # add empty channel
         return s
 
 
@@ -118,19 +119,22 @@ class RandomCrop3D(CropBase):
 
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         src, tgt = sample
-        assert src.shape == tgt.shape
-        h, w, d = src.shape
+        *cs, h, w, d = src.shape
+        *ct, _, _, _ = tgt.shape
         hh, ww, dd = self.output_size
         max_idxs = (h-hh//2, w-ww//2, d-dd//2)
         min_idxs = (hh//2, ww//2, dd//2)
-        s_idxs = super()._get_sample_idxs(src)
+        s = src[0] if len(cs) > 0 else src  # use the first image to determine sampling if multimodal
+        s_idxs = super()._get_sample_idxs(s)
         i, j, k = [i if min_i <= i <= max_i else max_i if i > max_i else min_i
                    for max_i, min_i, i in zip(max_idxs, min_idxs, s_idxs)]
         oh = 0 if hh % 2 == 0 else 1
         ow = 0 if ww % 2 == 0 else 1
         od = 0 if dd % 2 == 0 else 1
-        s = src[np.newaxis, i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
-        t = tgt[np.newaxis, i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
+        s = src[..., i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
+        t = tgt[..., i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
+        if len(cs) == 0: s = s[np.newaxis,...]  # add channel axis if empty
+        if len(ct) == 0: t = t[np.newaxis,...]
         return s, t
 
 
@@ -145,20 +149,26 @@ class RandomSlice:
     """
 
     def __init__(self, axis:int=0, div:float=2):
+        assert 0 <= axis <= 2
         self.axis = axis
         self.div = div
 
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         src, tgt = sample
-        idx = np.random.choice(self._valid_idxs(src)[self.axis])
+        *cs, _, _, _ = src.shape
+        *ct, _, _, _ = tgt.shape
+        s = src[0] if len(cs) > 0 else src  # use the first image to determine sampling if multimodal
+        idx = np.random.choice(self._valid_idxs(s)[self.axis])
         s = self._get_slice(src, idx)
         t = self._get_slice(tgt, idx)
+        if len(cs) == 0: s = s[np.newaxis,...]  # add channel axis if empty
+        if len(ct) == 0: t = t[np.newaxis,...]
         return s, t
 
     def _get_slice(self, img:np.ndarray, idx:int):
-        s = img[idx,:,:] if self.axis == 0 else \
-            img[:,idx,:] if self.axis == 1 else \
-            img[:,:,idx]
+        s = img[...,idx,:,:] if self.axis == 0 else \
+            img[...,:,idx,:] if self.axis == 1 else \
+            img[...,:,:,idx]
         return s
 
     def _valid_idxs(self, img:np.ndarray) -> Tuple[np.ndarray,np.ndarray,np.ndarray]:
@@ -173,7 +183,6 @@ class ToTensor:
 
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[torch.Tensor,torch.Tensor]:
         src, tgt = sample
-        assert src.shape == tgt.shape
         return (torch.from_numpy(src), torch.from_numpy(tgt))
 
 
@@ -194,7 +203,6 @@ class AddChannel:
 
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]) -> Tuple[torch.Tensor,torch.Tensor]:
         src, tgt = sample
-        assert src.shape == tgt.shape
         return (src.unsqueeze(0), tgt.unsqueeze(0))
 
 
