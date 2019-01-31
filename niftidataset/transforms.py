@@ -260,7 +260,14 @@ class RandomGamma:
         self.gamma, self.gain = (max(1-gamma,0),1+gamma), (max(1-gain,0),1+gain)
 
     @staticmethod
-    def _gamma(img, gain, gamma): return gain * img ** gamma
+    def _make_pos(x): return x.min(), x + x.min()
+
+    def _gamma(self, x, gain, gamma):
+        is_pos = torch.all(x >= 0)
+        if not is_pos: m, x = self._make_pos(x)
+        x = gain * x ** gamma
+        if not is_pos: x = x - m
+        return x
 
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
@@ -268,7 +275,7 @@ class RandomGamma:
             gamma = random.uniform(self.gamma[0], self.gamma[1])
             gain = random.uniform(self.gain[0], self.gain[1])
             src = self._gamma(src, gain, gamma)
-            if self.tfm_y: tgt =  self._gamma(tgt, gain, gamma)
+            if self.tfm_y: tgt = self._gamma(tgt, gain, gamma)
         return src, tgt
        
 
