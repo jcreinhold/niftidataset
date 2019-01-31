@@ -22,7 +22,7 @@ with open('LICENSE') as f:
 
 args = dict(
     name='niftidataset',
-    version='0.1.3',
+    version='0.1.4',
     description="dataset and transforms classes for NIfTI data in pytorch",
     long_description=readme,
     author='Jacob Reinhold',
@@ -35,5 +35,6 @@ args = dict(
 
 setup(install_requires=['nibabel',
                         'numpy',
+                        'pillow',
                         'torch',
                         'torchvision'], **args)

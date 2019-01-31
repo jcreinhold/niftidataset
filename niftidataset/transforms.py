@@ -15,13 +15,24 @@ __all__ = ['RandomCrop2D',
            'RandomSlice',
            'ToTensor',
            'ToFastaiImage',
+           'ToPILImage',
            'AddChannel',
-           'Normalize']
+           'Normalize',
+           'RandomAffine',
+           'RandomFlip',
+           'RandomGamma',
+           'RandomNoise']
 
-from typing import Tuple, Union
+import random
+from typing import Optional, Tuple, Union
 
 import numpy as np
+from PIL import Image
 import torch
+import torchvision as tv
+import torchvision.transforms.functional as TF
+
+PILImage = type(Image)
 
 
 class CropBase:
@@ -179,16 +190,18 @@ class RandomSlice:
 
 
 class ToTensor:
-    """ Convert ndarrays in sample to Tensors """
-
+    """ Convert images in sample to Tensors """
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[torch.Tensor,torch.Tensor]:
         src, tgt = sample
-        return (torch.from_numpy(src), torch.from_numpy(tgt))
+        if isinstance(src, np.ndarray) and isinstance(tgt, np.ndarray):
+            return torch.from_numpy(src), torch.from_numpy(tgt)
+        # handle PIL images
+        src, tgt = np.asarray(src)[None,...], np.asarray(tgt)[None,...]
+        return torch.from_numpy(src), torch.from_numpy(tgt)
 
 
 class ToFastaiImage:
     """ convert a 2D image to fastai.Image class """
-
     def __init__(self):
         from fastai.vision import Image
         self.Image = Image
@@ -198,9 +211,79 @@ class ToFastaiImage:
         return self.Image(x), self.Image(y)
 
 
+class ToPILImage:
+    """ convert 2D image to PIL image """
+    def __init__(self, mode:str='F'):
+        self.toPIL = tv.transforms.ToPILImage(mode)
+
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
+        src, tgt = sample
+        src, tgt = np.transpose(src,(1,2,0)), np.transpose(tgt,(1,2,0))
+        return self.toPIL(src), self.toPIL(tgt)
+
+
+class RandomAffine(tv.transforms.RandomAffine):
+    """ apply random affine transformations to a sample of images """
+    def __init__(self, p:float, degrees:float, translate:Optional[float]=None, scale:Optional[float]=None,
+                 resample:int=Image.BILINEAR):
+        self.p = p
+        self.degrees, self.translate, self.scale = (-degrees,degrees), (translate,translate), (1-scale,1+scale)
+        self.resample = resample
+
+    def __call__(self, sample:Tuple[PILImage, PILImage]):
+        src, tgt = sample
+        ret = self.get_params(self.degrees, self.translate, self.scale, None, src.size)
+        if self.degrees[1] > 0 and random.random() < self.p:
+            src = TF.affine(src, *ret, resample=self.resample, fillcolor=0)
+            tgt = TF.affine(tgt, *ret, resample=self.resample, fillcolor=0)
+        return src, tgt
+
+
+class RandomFlip:
+    def __init__(self, p:float, vflip:bool=False, hflip:bool=False):
+        self.p = p
+        self.vflip, self.hflip = vflip, hflip
+
+    def __call__(self, sample:Tuple[PILImage,PILImage]):
+        src, tgt = sample
+        if self.vflip and random.random() < self.p:
+            src, tgt = TF.vflip(src), TF.vflip(tgt)
+        if self.hflip and random.random() < self.p:
+            src, tgt = TF.hflip(src), TF.hflip(tgt)
+        return src, tgt
+
+
+class RandomGamma:
+    """ apply random gamma transformations to a sample of images """
+    def __init__(self, p, tfm_y=False, gamma:float=1., gain:float=1.):
+        self.p, self.tfm_y = p, tfm_y
+        self.gamma, self.gain = gamma, gain
+   
+    def _gamma(self, img): return self.gain * img ** self.gamma
+
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
+        src, tgt = sample
+        if random.random() < self.p:
+            src = self._gamma(src)
+            if self.tfm_y: tgt =  self._gamma(tgt)
+        return src, tgt
+       
+
+class RandomNoise:
+    """ add random gaussian noise to a sample of images """
+    def __init__(self, p, tfm_x=True, tfm_y=False, std:float=0):
+        self.p, self.tfm_x, self.tfm_y, self.std = p, tfm_x, tfm_y, std
+
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
+        src, tgt = sample
+        if self.std > 0 and random.random() < self.p:
+            if self.tfm_x: src = src + torch.randn_like(src).mul(self.std)
+            if self.tfm_y: tgt = tgt + torch.randn_like(tgt).mul(self.std)
+        return src, tgt
+
+ 
 class AddChannel:
     """ Add empty first dimension to sample """
-
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]) -> Tuple[torch.Tensor,torch.Tensor]:
         src, tgt = sample
         return (src.unsqueeze(0), tgt.unsqueeze(0))
@@ -208,9 +291,27 @@ class AddChannel:
 
 class Normalize:
     """ put data in range of 0 to 1 """
-
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         x, y = sample
         x = (x - x.min()) / (x.max() - x.min())
         y = (y - y.min()) / (y.max() - y.min())
         return x, y
+
+
+def get_transforms(p:Union[list,float], tfm_x=True, tfm_y=False, degrees:Optional[float]=0,
+                   translate:Optional[float]=None, scale:Optional[float]=None, vflip:bool=False,
+                   hflip:bool=False, gamma:Optional[float]=None, gain:float=1, std:float=0):
+    """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
+    if isinstance(p, float): p = [p] * 4
+    tfms = []
+    if degrees > 0 or translate is not None or scale is not None:
+        tfms.append(ToPILImage())
+        tfms.append(RandomAffine(p[0], degrees, translate, scale))
+    if vflip or hflip:
+        tfms.append(RandomFlip(p[1], vflip, hflip))
+    tfms.append(ToTensor())
+    if gamma is not None or gain is not None:
+        tfms.append(RandomGamma(p[2], tfm_y, gamma, gain))
+    if std > 0:
+        tfms.append(RandomNoise(p[3], tfm_x, tfm_y, std))
+    return tfms

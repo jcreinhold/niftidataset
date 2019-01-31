@@ -16,6 +16,7 @@ Requirements
 
 - nibabel
 - numpy
+- pillow
 - torch
 - torchvision
 

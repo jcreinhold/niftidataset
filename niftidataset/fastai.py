@@ -141,7 +141,7 @@ class TargetTupleList(faiv.ItemList):
         return ImageTuple(faiv.Image(t[0]),faiv.Image(t[1]))
 
 
-class TIFFTupleList(TIFFImageList):
+class TIFFTupleList(TiffImageList):
     _label_cls = TargetTupleList
     def __init__(self, items, itemsB=None, **kwargs):
         self.itemsB = itemsB
@@ -161,7 +161,7 @@ class TIFFTupleList(TIFFImageList):
     @classmethod
     def from_folders(cls, path, folderA, folderB, **kwargs):
         path = PosixPath(path)
-        itemsB = TIFFImageList.from_folder(path/folderB).items
+        itemsB = TiffImageList.from_folder(path/folderB).items
         res = super().from_folder(path/folderA, itemsB=itemsB, **kwargs)
         res.path = path
         return res
