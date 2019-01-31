@@ -122,7 +122,7 @@ class TestUtilities(unittest.TestCase):
         
     def test_aug_intensity_2d(self):
         composed = torch_tfms.Compose([ToTensor(),
-                                       RandomGamma(1, True, 0.1, 1)])
+                                       RandomGamma(1, True, 0.1, 0.1)])
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
         myds = MultimodalTiffDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))

@@ -255,17 +255,20 @@ class RandomFlip:
 
 class RandomGamma:
     """ apply random gamma transformations to a sample of images """
-    def __init__(self, p, tfm_y=False, gamma:float=1., gain:float=1.):
+    def __init__(self, p, tfm_y=False, gamma:float=0., gain:float=0.):
         self.p, self.tfm_y = p, tfm_y
-        self.gamma, self.gain = gamma, gain
-   
-    def _gamma(self, img): return self.gain * img ** self.gamma
+        self.gamma, self.gain = (max(1-gamma,0),1+gamma), (max(1-gain,0),1+gain)
+
+    @staticmethod
+    def _gamma(img, gain, gamma): return gain * img ** gamma
 
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
         if random.random() < self.p:
-            src = self._gamma(src)
-            if self.tfm_y: tgt =  self._gamma(tgt)
+            gamma = random.uniform(self.gamma[0], self.gamma[1])
+            gain = random.uniform(self.gain[0], self.gain[1])
+            src = self._gamma(src, gain, gamma)
+            if self.tfm_y: tgt =  self._gamma(tgt, gain, gamma)
         return src, tgt
        
 
