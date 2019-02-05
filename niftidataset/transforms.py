@@ -18,6 +18,7 @@ __all__ = ['RandomCrop2D',
            'ToPILImage',
            'AddChannel',
            'Normalize',
+           'Digitize',
            'RandomAffine',
            'RandomFlip',
            'RandomGamma',
@@ -307,6 +308,18 @@ class Normalize:
         y = (y - y.min()) / (y.max() - y.min())
         return x, y
 
+
+class Digitize:
+    """ digitize a sample of images """
+    def __init__(self, tfm_x=False, tfm_y=True, int_range=(1,100), step=1):
+        self.tfm_x, self.tfm_y, self.range, self.step = tfm_x, tfm_y, int_range, step
+
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
+        src, tgt = sample
+        if self.tfm_x: src = np.digitize(src, np.arange(self.range[0], self.range[1], self.step))
+        if self.tfm_y: tgt = np.digitize(tgt, np.arange(self.range[0], self.range[1], self.step))
+        return src, tgt
+    
 
 def get_transforms(p:Union[list,float], tfm_x=True, tfm_y=False, degrees:Optional[float]=0,
                    translate:Optional[float]=None, scale:Optional[float]=None, vflip:bool=False,
