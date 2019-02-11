@@ -142,7 +142,15 @@ class TestUtilities(unittest.TestCase):
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
         myds = MultimodalTiffDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
-        self.assertEqual(myds[0][1].shape, (1,256,256))       
+        self.assertEqual(myds[0][1].shape, (1,256,256))
+        
+    def test_aug_block_2d(self):
+        composed = torch_tfms.Compose([ToTensor(),
+                                       RandomBlock(1, (1,100))])
+        sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
+        myds = MultimodalTiffDataset(sd, td, composed)
+        self.assertEqual(myds[0][0].shape, (1,256,256))
+        self.assertEqual(myds[0][1].shape, (1,256,256))              
         
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_niftidataset_2d_fastai(self):

@@ -20,6 +20,7 @@ __all__ = ['RandomCrop2D',
            'Normalize',
            'Digitize',
            'RandomAffine',
+           'RandomBlock',
            'RandomFlip',
            'RandomGamma',
            'RandomNoise']
@@ -292,6 +293,30 @@ class RandomNoise:
             if self.tfm_y: tgt = tgt + torch.randn_like(tgt).mul(self.std)
         return src, tgt
 
+
+class RandomBlock:
+    """ add random blocks of random intensity to a sample of images """
+    def __init__(self, p, sz_range, int_range=None, tfm_x=True, tfm_y=False):
+        self.p, self.sz, self.int, self.tfm_x, self.tfm_y = p, sz_range, int_range, tfm_x, tfm_y
+
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
+        src, tgt = sample
+        _, hmax, wmax = src.shape
+        mask = np.where(src > src.mean())
+        c = np.random.randint(0, len(mask[1]))  # choose the set of idxs to use
+        h, w = [m[c] for m in mask[1:]]  # pull out the chosen idxs (2D)
+        s = random.randrange(*self.sz)
+        if h+s >= hmax: s -= hmax - h+s
+        if w+s >= wmax: s -= wmax - w+s
+        if h-s < 0: s -= h-s
+        if w-s < 0: s -= w-s
+        o = 0 if s % 2 == 0 else 1
+        int_range = self.int if self.int is not None else (int(src.min()), int(src.max()))
+        if random.random() < self.p:
+            if self.tfm_x: src[:,h-s//2:h+s//2+o,w-s//2:w+s//2+o] = random.randrange(*int_range)
+            if self.tfm_y: tgt[:,h-s//2:h+s//2+o,w-s//2:w+s//2+o] = random.randrange(*int_range)
+        return src, tgt
+    
  
 class AddChannel:
     """ Add empty first dimension to sample """
@@ -323,9 +348,10 @@ class Digitize:
 
 def get_transforms(p:Union[list,float], tfm_x=True, tfm_y=False, degrees:Optional[float]=0,
                    translate:Optional[float]=None, scale:Optional[float]=None, vflip:bool=False,
-                   hflip:bool=False, gamma:Optional[float]=None, gain:float=1, std:float=0):
+                   hflip:bool=False, gamma:Optional[float]=None, gain:float=1, std:float=0,
+                   block:Optional[Tuple[int,int]]=None):
     """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
-    if isinstance(p, float): p = [p] * 4
+    if isinstance(p, float): p = [p] * 5
     tfms = []
     if degrees > 0 or translate is not None or scale is not None:
         tfms.append(ToPILImage())
@@ -335,6 +361,8 @@ def get_transforms(p:Union[list,float], tfm_x=True, tfm_y=False, degrees:Optiona
     tfms.append(ToTensor())
     if gamma is not None or gain is not None:
         tfms.append(RandomGamma(p[2], tfm_y, gamma, gain))
+    if block is not None:
+        tfms.append(RandomBlock(p[3], block, tfm_x=tfm_x, tfm_y=tfm_y))
     if std > 0:
-        tfms.append(RandomNoise(p[3], tfm_x, tfm_y, std))
+        tfms.append(RandomNoise(p[4], tfm_x, tfm_y, std))
     return tfms
