@@ -302,7 +302,7 @@ class RandomBlock:
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
         _, hmax, wmax = src.shape
-        mask = np.where(src > src.mean())
+        mask = np.where(src >= src.mean())
         c = np.random.randint(0, len(mask[1]))  # choose the set of idxs to use
         h, w = [m[c] for m in mask[1:]]  # pull out the chosen idxs (2D)
         s = random.randrange(*self.sz)
