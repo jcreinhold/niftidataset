@@ -311,7 +311,7 @@ class RandomBlock:
         if h-s < 0: s -= h-s
         if w-s < 0: s -= w-s
         o = 0 if s % 2 == 0 else 1
-        int_range = self.int if self.int is not None else (int(src.min()), int(src.max()))
+        int_range = self.int if self.int is not None else (int(src.min()), int(src.max())+1)
         if random.random() < self.p:
             if self.tfm_x: src[:,h-s//2:h+s//2+o,w-s//2:w+s//2+o] = random.randrange(*int_range)
             if self.tfm_y: tgt[:,h-s//2:h+s//2+o,w-s//2:w+s//2+o] = random.randrange(*int_range)
