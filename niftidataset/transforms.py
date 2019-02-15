@@ -23,7 +23,8 @@ __all__ = ['RandomCrop2D',
            'RandomBlock',
            'RandomFlip',
            'RandomGamma',
-           'RandomNoise']
+           'RandomNoise',
+           'get_transforms']
 
 import random
 from typing import Optional, Tuple, Union
@@ -327,10 +328,13 @@ class AddChannel:
 
 class Normalize:
     """ put data in range of 0 to 1 """
+    def __init__(self, scale:float=1):
+        self.scale = scale
+
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         x, y = sample
-        x = (x - x.min()) / (x.max() - x.min())
-        y = (y - y.min()) / (y.max() - y.min())
+        x = self.scale * ((x - x.min()) / (x.max() - x.min()))
+        y = self.scale * ((y - y.min()) / (y.max() - y.min()))
         return x, y
 
 
@@ -346,13 +350,15 @@ class Digitize:
         return src, tgt
     
 
-def get_transforms(p:Union[list,float], tfm_x=True, tfm_y=False, degrees:Optional[float]=0,
+def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:Optional[float]=0,
                    translate:Optional[float]=None, scale:Optional[float]=None, vflip:bool=False,
                    hflip:bool=False, gamma:Optional[float]=None, gain:float=1, std:float=0,
-                   block:Optional[Tuple[int,int]]=None):
+                   block:Optional[Tuple[int,int]]=None, norm:float=0):
     """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
     if isinstance(p, float): p = [p] * 5
     tfms = []
+    if norm > 0:
+        tfms.append(Normalize(norm))
     if degrees > 0 or translate is not None or scale is not None:
         tfms.append(ToPILImage())
         tfms.append(RandomAffine(p[0], degrees, translate, scale))
