@@ -36,7 +36,7 @@ class TestUtilities(unittest.TestCase):
         os.mkdir(self.train_dir)
         os.mkdir(os.path.join(self.train_dir, '1'))
         os.mkdir(os.path.join(self.train_dir, '2'))
-        nii = glob_nii(self.nii_dir)[0]
+        nii = glob_imgs(self.nii_dir)[0]
         tif = os.path.join(self.tif_dir, 'test.tif')
         path, base, ext = split_filename(nii)
         for i in range(4):
@@ -98,7 +98,7 @@ class TestUtilities(unittest.TestCase):
     def test_multimodaltiff(self):
         composed = torch_tfms.Compose([ToTensor()])
         sd, td = [self.train_dir+'/1/'] * 3, [self.train_dir+'/2/'] * 2
-        myds = MultimodalTiffDataset(sd, td, composed)
+        myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (3,256,256))
         self.assertEqual(myds[0][1].shape, (2,256,256))
 
@@ -107,7 +107,7 @@ class TestUtilities(unittest.TestCase):
                                        RandomAffine(1, 15, 0.1, 0.1),
                                        ToTensor()])
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
-        myds = MultimodalTiffDataset(sd, td, composed)
+        myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
         
@@ -116,7 +116,7 @@ class TestUtilities(unittest.TestCase):
                                        RandomFlip(1, True, True),
                                        ToTensor()])
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
-        myds = MultimodalTiffDataset(sd, td, composed)
+        myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
         
@@ -124,7 +124,7 @@ class TestUtilities(unittest.TestCase):
         composed = torch_tfms.Compose([ToTensor(),
                                        RandomGamma(1, True, 0.1, 0.1)])
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
-        myds = MultimodalTiffDataset(sd, td, composed)
+        myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
         
@@ -132,7 +132,7 @@ class TestUtilities(unittest.TestCase):
         composed = torch_tfms.Compose([ToTensor(),
                                        RandomNoise(1, True, True, 1)])
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
-        myds = MultimodalTiffDataset(sd, td, composed)
+        myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))       
         
@@ -140,7 +140,7 @@ class TestUtilities(unittest.TestCase):
         composed = torch_tfms.Compose([Digitize(True, True, (1,100), 1),
                                        ToTensor()])
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
-        myds = MultimodalTiffDataset(sd, td, composed)
+        myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
         
@@ -148,7 +148,7 @@ class TestUtilities(unittest.TestCase):
         composed = torch_tfms.Compose([ToTensor(),
                                        RandomBlock(1, (1,100))])
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
-        myds = MultimodalTiffDataset(sd, td, composed)
+        myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))              
         
