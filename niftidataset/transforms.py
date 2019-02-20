@@ -12,6 +12,7 @@ Created on: Oct 24, 2018
 
 __all__ = ['RandomCrop2D',
            'RandomCrop3D',
+           'RandomCrop',
            'RandomSlice',
            'ToTensor',
            'ToFastaiImage',
@@ -147,6 +148,40 @@ class RandomCrop3D(CropBase):
         od = 0 if dd % 2 == 0 else 1
         s = src[..., i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
         t = tgt[..., i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow, k-dd//2:k+dd//2+od]
+        if len(cs) == 0: s = s[np.newaxis,...]  # add channel axis if empty
+        if len(ct) == 0: t = t[np.newaxis,...]
+        return s, t
+
+
+class RandomCrop:
+    """
+    Randomly crop a 2d patch from a 2d image
+
+    Args:
+        output_size (tuple or int): Desired output size.
+            If int, square crop is made.
+    """
+
+    def __init__(self, output_size:Union[tuple,int]):
+        self.output_size = (output_size, output_size) if isinstance(output_size, int) else output_size
+
+    def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
+        src, tgt = sample
+        *cs, h, w = src.shape
+        *ct, _, _ = tgt.shape
+        hh, ww = self.output_size
+        max_idxs = (h-hh//2, w-ww//2)
+        min_idxs = (hh//2, ww//2)
+        s = src[0] if len(cs) > 0 else src  # use the first image to determine sampling if multimodal
+        mask = np.where(s > s.mean())  # returns a tuple of length 3
+        c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
+        s_idxs = [m[c] for m in mask]  # pull out the chosen idxs
+        i, j = [i if min_i <= i <= max_i else max_i if i > max_i else min_i
+                for max_i, min_i, i in zip(max_idxs, min_idxs, s_idxs)]
+        oh = 0 if hh % 2 == 0 else 1
+        ow = 0 if ww % 2 == 0 else 1
+        s = src[..., i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow]
+        t = tgt[..., i-hh//2:i+hh//2+oh, j-ww//2:j+ww//2+ow]
         if len(cs) == 0: s = s[np.newaxis,...]  # add channel axis if empty
         if len(ct) == 0: t = t[np.newaxis,...]
         return s, t

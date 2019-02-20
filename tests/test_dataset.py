@@ -101,7 +101,14 @@ class TestUtilities(unittest.TestCase):
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (3,256,256))
         self.assertEqual(myds[0][1].shape, (2,256,256))
-
+        
+    def test_multimodaltiff_crop(self):
+        composed = torch_tfms.Compose([ToTensor(), RandomCrop(32)])
+        sd, td = [self.train_dir+'/1/'] * 3, [self.train_dir+'/2/'] * 2
+        myds = MultimodalImageDataset(sd, td, composed)
+        self.assertEqual(myds[0][0].shape, (3,32,32))
+        self.assertEqual(myds[0][1].shape, (2,32,32))
+        
     def test_aug_affine_2d(self):
         composed = torch_tfms.Compose([ToPILImage(),
                                        RandomAffine(1, 15, 0.1, 0.1),
