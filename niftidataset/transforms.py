@@ -56,7 +56,7 @@ class CropBase:
 
     def _get_sample_idxs(self, img:np.ndarray) -> Tuple[int,int,int]:
         """ get the set of indices from which to sample (foreground) """
-        mask = np.where(img > img.mean())  # returns a tuple of length 3
+        mask = np.where(img >= img.mean())  # returns a tuple of length 3
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
         h, w, d = [m[c] for m in mask]  # pull out the chosen idxs
         return h, w, d
@@ -173,7 +173,7 @@ class RandomCrop:
         max_idxs = (h-hh//2, w-ww//2)
         min_idxs = (hh//2, ww//2)
         s = src[0] if len(cs) > 0 else src  # use the first image to determine sampling if multimodal
-        mask = np.where(s > s.mean())  # returns a tuple of length 3
+        mask = np.where(s >= s.mean())  # returns a tuple of length 3
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
         s_idxs = [m[c] for m in mask]  # pull out the chosen idxs
         i, j = [i if min_i <= i <= max_i else max_i if i > max_i else min_i
