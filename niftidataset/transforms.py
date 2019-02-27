@@ -18,6 +18,7 @@ __all__ = ['RandomCrop2D',
            'ToFastaiImage',
            'ToPILImage',
            'AddChannel',
+           'FixIntensityRange',
            'Normalize',
            'Digitize',
            'RandomAffine',
@@ -361,7 +362,7 @@ class AddChannel:
         return (src.unsqueeze(0), tgt.unsqueeze(0))
 
 
-class Normalize:
+class FixIntensityRange:
     """ put data in range of 0 to 1 """
     def __init__(self, scale:float=1):
         self.scale = scale
@@ -383,17 +384,31 @@ class Digitize:
         if self.tfm_x: src = np.digitize(src, np.arange(self.range[0], self.range[1], self.step))
         if self.tfm_y: tgt = np.digitize(tgt, np.arange(self.range[0], self.range[1], self.step))
         return src, tgt
-    
 
+
+class Normalize:
+    """ implement a normalize function for input two images """
+    def __init__(self, mean, std, tfm_x=True, tfm_y=False):
+        self.mean = mean
+        self.std = std
+        self.tfm_x = tfm_x
+        self.tfm_y = tfm_y
+        
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
+        src, tgt = sample
+        if self.tfm_x: src = tv.transforms.functional.normalize(src, self.mean, self.std)
+        if self.tfm_y: tgt = tv.transforms.functional.normalize(tgt, self.mean, self.std)
+        return src, tgt
+
+    
 def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:Optional[float]=0,
                    translate:Optional[float]=None, scale:Optional[float]=None, vflip:bool=False,
-                   hflip:bool=False, gamma:Optional[float]=None, gain:float=1, std:float=0,
-                   block:Optional[Tuple[int,int]]=None, norm:float=0):
+                   hflip:bool=False, gamma:Optional[float]=None, gain:float=1, noise_pwr:float=0,
+                   block:Optional[Tuple[int,int]]=None, mean:Optional[Tuple[float]]=None,
+                   std:Optional[Tuple[float]]=None):
     """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
     if isinstance(p, float): p = [p] * 5
     tfms = []
-    if norm > 0:
-        tfms.append(Normalize(norm))
     if degrees > 0 or translate is not None or scale is not None:
         tfms.append(ToPILImage())
         tfms.append(RandomAffine(p[0], degrees, translate, scale))
@@ -404,6 +419,8 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
         tfms.append(RandomGamma(p[2], tfm_y, gamma, gain))
     if block is not None:
         tfms.append(RandomBlock(p[3], block, tfm_x=tfm_x, tfm_y=tfm_y))
-    if std > 0:
-        tfms.append(RandomNoise(p[4], tfm_x, tfm_y, std))
+    if noise_pwr > 0:
+        tfms.append(RandomNoise(p[4], tfm_x, tfm_y, noise_pwr))
+    if mean is not None and std is not None:
+        tfms.append(Normalize(mean=mean, std=std))
     return tfms
