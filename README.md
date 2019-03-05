@@ -14,11 +14,11 @@ for use with PyTorch or PyTorch wrappers
 Requirements
 ------------
 
-- nibabel
-- numpy
-- pillow
-- torch
-- torchvision
+- nibabel >= 2.3.1
+- numpy >= 1.15.4
+- pillow >= 5.3.0
+- torch >= 1.0.0
+- torchvision >= 0.2.1
 
 Installation
 ------------

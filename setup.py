@@ -33,8 +33,8 @@ args = dict(
     keywords="nifti dataset",
 )
 
-setup(install_requires=['nibabel',
-                        'numpy',
-                        'pillow',
-                        'torch',
-                        'torchvision'], **args)
+setup(install_requires=['nibabel>=2.3.1',
+                        'numpy>=1.15.4',
+                        'pillow>=5.3.0',
+                        'torch>=1.0.0',
+                        'torchvision>=0.2.1'], **args)
