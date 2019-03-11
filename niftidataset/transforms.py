@@ -403,7 +403,7 @@ class Normalize:
     
 def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:Optional[float]=0,
                    translate:Optional[float]=None, scale:Optional[float]=None, vflip:bool=False,
-                   hflip:bool=False, gamma:Optional[float]=None, gain:float=1, noise_pwr:float=0,
+                   hflip:bool=False, gamma:Optional[float]=None, gain:Optional[float]=None, noise_pwr:float=0,
                    block:Optional[Tuple[int,int]]=None, mean:Optional[Tuple[float]]=None,
                    std:Optional[Tuple[float]]=None):
     """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
