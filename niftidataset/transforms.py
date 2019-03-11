@@ -252,13 +252,13 @@ class ToFastaiImage:
 
 class ToPILImage:
     """ convert 2D image to PIL image """
-    def __init__(self, mode:str='F'):
-        self.toPIL = tv.transforms.ToPILImage(mode)
+    def __init__(self, mode='F'):
+        self.mode = mode
 
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
-        src, tgt = np.transpose(src,(1,2,0)), np.transpose(tgt,(1,2,0))
-        return self.toPIL(src), self.toPIL(tgt)
+        src, tgt = np.squeeze(src), np.squeeze(tgt)
+        return Image.fromarray(src, mode=self.mode), Image.fromarray(tgt, mode=self.mode)
 
 
 class RandomAffine(tv.transforms.RandomAffine):
