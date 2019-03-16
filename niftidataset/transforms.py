@@ -429,7 +429,7 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
                    translate:Optional[float]=None, scale:Optional[float]=None, vflip:bool=False,
                    hflip:bool=False, gamma:Optional[float]=None, gain:Optional[float]=None, noise_pwr:float=0,
                    block:Optional[Tuple[int,int]]=None, mean:Optional[Tuple[float]]=None,
-                   std:Optional[Tuple[float]]=None):
+                   std:Optional[Tuple[float]]=None, is_3d:bool=False):
     """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
     if isinstance(p, float): p = [p] * 5
     tfms = []
@@ -442,7 +442,7 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
     if gamma is not None or gain is not None:
         tfms.append(RandomGamma(p[2], tfm_y, gamma, gain))
     if block is not None:
-        tfms.append(RandomBlock(p[3], block, tfm_x=tfm_x, tfm_y=tfm_y))
+        tfms.append(RandomBlock(p[3], block, tfm_x=tfm_x, tfm_y=tfm_y, is_3d=is_3d))
     if noise_pwr > 0:
         tfms.append(RandomNoise(p[4], tfm_x, tfm_y, noise_pwr))
     if mean is not None and std is not None:
