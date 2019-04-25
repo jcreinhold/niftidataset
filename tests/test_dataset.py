@@ -162,7 +162,7 @@ class TestUtilities(unittest.TestCase):
     def test_aug_block_3d(self):
         composed = torch_tfms.Compose([RandomCrop3D(10),
                                        ToTensor(),
-                                       RandomBlock(1, (1,4), is_3d=True)])
+                                       RandomBlock(1, (1,4), thresh=0, is_3d=True)])
         myds = NiftiDataset(self.train_dir, self.train_dir, composed)
         self.assertEqual(myds[0][0].shape, (1,10,10,10))
 

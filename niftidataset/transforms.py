@@ -333,13 +333,14 @@ class RandomNoise:
 
 class RandomBlock:
     """ add random blocks of random intensity to a sample of images """
-    def __init__(self, p, sz_range, int_range=None, tfm_x=True, tfm_y=False, is_3d=False):
+    def __init__(self, p, sz_range, thresh=None, int_range=None, tfm_x=True, tfm_y=False, is_3d=False):
         self.p, self.sz, self.int, self.tfm_x, self.tfm_y = p, sz_range, int_range, tfm_x, tfm_y
+        self.thresh = thresh
         self.is_3d = is_3d
 
     def block2d(self, src, tgt):
         _, hmax, wmax = src.shape
-        mask = np.where(src >= src.mean())
+        mask = np.where(src >= (src.mean() if self.thresh is None else self.thresh))
         c = np.random.randint(0, len(mask[1]))  # choose the set of idxs to use
         h, w = [m[c] for m in mask[1:]]  # pull out the chosen idxs (2D)
         s = random.randrange(*self.sz)
@@ -356,7 +357,7 @@ class RandomBlock:
 
     def block3d(self, src, tgt):
         _, hmax, wmax, dmax = src.shape
-        mask = np.where(src >= src.mean())
+        mask = np.where(src >= (src.mean() if self.thresh is None else self.thresh))
         c = np.random.randint(0, len(mask[1]))  # choose the set of idxs to use
         h, w, d = [m[c] for m in mask[1:]]  # pull out the chosen idxs (2D)
         s = random.randrange(*self.sz)
@@ -429,7 +430,7 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
                    translate:Optional[float]=None, scale:Optional[float]=None, vflip:bool=False,
                    hflip:bool=False, gamma:Optional[float]=None, gain:Optional[float]=None, noise_pwr:float=0,
                    block:Optional[Tuple[int,int]]=None, mean:Optional[Tuple[float]]=None,
-                   std:Optional[Tuple[float]]=None, is_3d:bool=False):
+                   std:Optional[Tuple[float]]=None, thresh:Optional[float]=None, is_3d:bool=False):
     """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
     if isinstance(p, float): p = [p] * 5
     tfms = []
@@ -442,7 +443,7 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
     if gamma is not None or gain is not None:
         tfms.append(RandomGamma(p[2], tfm_y, gamma, gain))
     if block is not None:
-        tfms.append(RandomBlock(p[3], block, tfm_x=tfm_x, tfm_y=tfm_y, is_3d=is_3d))
+        tfms.append(RandomBlock(p[3], block, thresh=thresh, tfm_x=tfm_x, tfm_y=tfm_y, is_3d=is_3d))
     if noise_pwr > 0:
         tfms.append(RandomNoise(p[4], tfm_x, tfm_y, noise_pwr))
     if mean is not None and std is not None:
