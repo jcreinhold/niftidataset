@@ -40,7 +40,11 @@ import torchvision.transforms.functional as TF
 PILImage = type(Image)
 
 
-class CropBase:
+class BaseTransform:
+    def __repr__(self): return f'{self.__class__.__name__}'
+
+
+class CropBase(BaseTransform):
     """ base class for crop transform """
 
     def __init__(self, out_dim:int, output_size:Union[tuple,int]):
@@ -61,6 +65,11 @@ class CropBase:
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
         h, w, d = [m[c] for m in mask]  # pull out the chosen idxs
         return h, w, d
+
+    def __repr__(self):
+        s = '{name}(output_size={output_size})'
+        d = dict(self.__dict__)
+        return s.format(name=self.__class__.__name__, **d)
 
 
 class RandomCrop2D(CropBase):
@@ -187,8 +196,13 @@ class RandomCrop:
         if len(ct) == 0: t = t[np.newaxis,...]
         return s, t
 
+    def __repr__(self):
+        s = '{name}(output_size={output_size})'
+        d = dict(self.__dict__)
+        return s.format(name=self.__class__.__name__, **d)
 
-class RandomSlice:
+
+class RandomSlice(BaseTransform):
     """
     take a random 2d slice from an image given a sample axis
 
@@ -228,7 +242,7 @@ class RandomSlice:
         return h, w, d
 
 
-class ToTensor:
+class ToTensor(BaseTransform):
     """ Convert images in sample to Tensors """
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[torch.Tensor,torch.Tensor]:
         src, tgt = sample
@@ -239,7 +253,7 @@ class ToTensor:
         return torch.from_numpy(src), torch.from_numpy(tgt)
 
 
-class ToFastaiImage:
+class ToFastaiImage(BaseTransform):
     """ convert a 2D image to fastai.Image class """
     def __init__(self):
         from fastai.vision import Image
@@ -250,7 +264,7 @@ class ToFastaiImage:
         return self.Image(x), self.Image(y)
 
 
-class ToPILImage:
+class ToPILImage(BaseTransform):
     """ convert 2D image to PIL image """
     def __init__(self, mode='F'):
         self.mode = mode
@@ -291,6 +305,11 @@ class RandomFlip:
             src, tgt = TF.hflip(src), TF.hflip(tgt)
         return src, tgt
 
+    def __repr__(self):
+        s = '{name}(p={p}, vflip={vflip}, hflip={hflip})'
+        d = dict(self.__dict__)
+        return s.format(name=self.__class__.__name__, **d)
+
 
 class RandomGamma:
     """ apply random gamma transformations to a sample of images """
@@ -316,7 +335,12 @@ class RandomGamma:
             src = self._gamma(src, gain, gamma)
             if self.tfm_y: tgt = self._gamma(tgt, gain, gamma)
         return src, tgt
-       
+
+    def __repr__(self):
+        s = '{name}(p={p}, tfm_y={tfm_y}, gamma={gamma}, gain={gain})'
+        d = dict(self.__dict__)
+        return s.format(name=self.__class__.__name__, **d)
+
 
 class RandomNoise:
     """ add random gaussian noise to a sample of images """
@@ -329,6 +353,11 @@ class RandomNoise:
             if self.tfm_x: src = src + torch.randn_like(src).mul(self.std)
             if self.tfm_y: tgt = tgt + torch.randn_like(tgt).mul(self.std)
         return src, tgt
+
+    def __repr__(self):
+        s = '{name}(p={p}, tfm_x={tfm_x}, tfm_y={tfm_y}, std={std})'
+        d = dict(self.__dict__)
+        return s.format(name=self.__class__.__name__, **d)
 
 
 class RandomBlock:
@@ -378,7 +407,12 @@ class RandomBlock:
         src, tgt = sample
         src, tgt = self.block2d(src, tgt) if not self.is_3d else self.block3d(src, tgt)
         return src, tgt
-    
+
+    def __repr__(self):
+        s = '{name}(p={p}, sz={sz}, int_range={int}, thresh={thresh}, tfm_x={tfm_x}, tfm_y={tfm_y}, is_3d={is_3d})'
+        d = dict(self.__dict__)
+        return s.format(name=self.__class__.__name__, **d)
+
  
 class AddChannel:
     """ Add empty first dimension to sample """
@@ -424,6 +458,11 @@ class Normalize:
         if self.tfm_x: src = tv.transforms.functional.normalize(src, self.mean, self.std)
         if self.tfm_y: tgt = tv.transforms.functional.normalize(tgt, self.mean, self.std)
         return src, tgt
+
+    def __repr__(self):
+        s = '{name}(mean={mean}, std={std}, tfm_x={tfm_x}, tfm_y={tfm_y})'
+        d = dict(self.__dict__)
+        return s.format(name=self.__class__.__name__, **d)
 
     
 def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:float=0,
