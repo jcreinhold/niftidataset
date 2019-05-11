@@ -263,10 +263,10 @@ class ToPILImage:
 
 class RandomAffine(tv.transforms.RandomAffine):
     """ apply random affine transformations to a sample of images """
-    def __init__(self, p:float, degrees:float, translate:Optional[float]=None, scale:Optional[float]=None,
-                 resample:int=Image.BILINEAR):
+    def __init__(self, p:float, degrees:float, translate:float=0, scale:float=0, resample:int=Image.BILINEAR):
         self.p = p
         self.degrees, self.translate, self.scale = (-degrees,degrees), (translate,translate), (1-scale,1+scale)
+        self.shear, self.fillcolor = None, 0
         self.resample = resample
 
     def __call__(self, sample:Tuple[PILImage, PILImage]):
@@ -426,25 +426,28 @@ class Normalize:
         return src, tgt
 
     
-def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:Optional[float]=0,
-                   translate:Optional[float]=None, scale:Optional[float]=None, vflip:bool=False,
-                   hflip:bool=False, gamma:Optional[float]=None, gain:Optional[float]=None, noise_pwr:float=0,
-                   block:Optional[Tuple[int,int]]=None, mean:Optional[Tuple[float]]=None,
-                   std:Optional[Tuple[float]]=None, thresh:Optional[float]=None, is_3d:bool=False):
+def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:float=0,
+                   translate:float=None, scale:float=None, vflip:bool=False, hflip:bool=False,
+                   gamma:float=0, gain:float=0, noise_pwr:float=0, block:Optional[Tuple[int,int]]=None,
+                   thresh:Optional[float]=None, is_3d:bool=False,
+                   mean:Optional[Tuple[float]]=None, std:Optional[Tuple[float]]=None):
     """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
     if isinstance(p, float): p = [p] * 5
     tfms = []
-    if degrees > 0 or translate is not None or scale is not None:
+    do_affine = p[0] > 0 and (degrees > 0 or translate > 0 or scale > 0)
+    do_flip = p[1] > 0 and (vflip or hflip)
+    if do_affine or do_flip:
         tfms.append(ToPILImage())
+    if do_affine:
         tfms.append(RandomAffine(p[0], degrees, translate, scale))
-    if vflip or hflip:
+    if do_flip:
         tfms.append(RandomFlip(p[1], vflip, hflip))
     tfms.append(ToTensor())
-    if gamma is not None or gain is not None:
+    if p[2] > 0 and (gamma is not None or gain is not None):
         tfms.append(RandomGamma(p[2], tfm_y, gamma, gain))
-    if block is not None:
+    if p[3] > 0 and (block is not None):
         tfms.append(RandomBlock(p[3], block, thresh=thresh, tfm_x=tfm_x, tfm_y=tfm_y, is_3d=is_3d))
-    if noise_pwr > 0:
+    if p[4] > 0 and (noise_pwr > 0):
         tfms.append(RandomNoise(p[4], tfm_x, tfm_y, noise_pwr))
     if mean is not None and std is not None:
         tfms.append(Normalize(mean=mean, std=std))
