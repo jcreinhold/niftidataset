@@ -47,9 +47,9 @@ class BaseTransform:
 class CropBase(BaseTransform):
     """ base class for crop transform """
 
-    def __init__(self, out_dim:int, output_size:Union[tuple,int]):
+    def __init__(self, out_dim:int, output_size:Union[tuple,int,list]):
         """ provide the common functionality for RandomCrop2D and RandomCrop3D """
-        assert isinstance(output_size, (int, tuple))
+        assert isinstance(output_size, (int, tuple, list))
         if isinstance(output_size, int):
             self.output_size = (output_size,)
             for _ in range(out_dim - 1):
@@ -84,7 +84,7 @@ class RandomCrop2D(CropBase):
         include_neighbors (bool): extract 3 neighboring slices instead of just 1
     """
 
-    def __init__(self, output_size:Union[tuple, int], axis:Union[int, None]=0,
+    def __init__(self, output_size:Union[int,tuple,list], axis:Optional[int]=0,
                  include_neighbors:bool=False) -> None:
         if axis is not None:
             assert 0 <= axis <= 2
@@ -139,7 +139,7 @@ class RandomCrop3D(CropBase):
             If int, cube crop is made.
     """
 
-    def __init__(self, output_size:Union[tuple,int]):
+    def __init__(self, output_size:Union[tuple,int,list]):
         super().__init__(3, output_size)
 
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
