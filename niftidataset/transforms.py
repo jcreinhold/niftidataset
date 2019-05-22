@@ -172,8 +172,9 @@ class RandomCrop:
             If int, square crop is made.
     """
 
-    def __init__(self, output_size:Union[tuple,int]):
+    def __init__(self, output_size:Union[tuple,int], threshold:Optional[float]=None):
         self.output_size = (output_size, output_size) if isinstance(output_size, int) else output_size
+        self.thresh = threshold
 
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         src, tgt = sample
@@ -183,7 +184,7 @@ class RandomCrop:
         max_idxs = (h-hh//2, w-ww//2)
         min_idxs = (hh//2, ww//2)
         s = src[0] if len(cs) > 0 else src  # use the first image to determine sampling if multimodal
-        mask = np.where(s >= s.mean())  # returns a tuple of length 3
+        mask = np.where(s >= (s.mean() if self.thresh is None else self.thresh))
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
         s_idxs = [m[c] for m in mask]  # pull out the chosen idxs
         i, j = [i if min_i <= i <= max_i else max_i if i > max_i else min_i
@@ -197,7 +198,7 @@ class RandomCrop:
         return s, t
 
     def __repr__(self):
-        s = '{name}(output_size={output_size})'
+        s = '{name}(output_size={output_size}, threshold={thresh})'
         d = dict(self.__dict__)
         return s.format(name=self.__class__.__name__, **d)
 
