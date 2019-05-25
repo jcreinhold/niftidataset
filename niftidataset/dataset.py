@@ -105,7 +105,7 @@ class MultimodalNiftiDataset(MultimodalDataset):
     
     def glob_imgs(self, path): return glob_imgs(path, ext='*.nii*')
     
-    def get_data(self, fn): return nib.load(fn).get_data()
+    def get_data(self, fn): return nib.load(fn).get_data().astype(np.float32)
 
     def stack(self, imgs): return np.stack(imgs)
 
