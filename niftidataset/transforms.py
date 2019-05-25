@@ -47,7 +47,7 @@ class BaseTransform:
 class CropBase(BaseTransform):
     """ base class for crop transform """
 
-    def __init__(self, out_dim:int, output_size:Union[tuple,int,list]):
+    def __init__(self, out_dim:int, output_size:Union[tuple,int,list], threshold:Optional[float]=None):
         """ provide the common functionality for RandomCrop2D and RandomCrop3D """
         assert isinstance(output_size, (int, tuple, list))
         if isinstance(output_size, int):
@@ -58,16 +58,17 @@ class CropBase(BaseTransform):
             assert len(output_size) == out_dim
             self.output_size = output_size
         self.out_dim = out_dim
+        self.thresh = threshold
 
     def _get_sample_idxs(self, img:np.ndarray) -> Tuple[int,int,int]:
         """ get the set of indices from which to sample (foreground) """
-        mask = np.where(img >= img.mean())  # returns a tuple of length 3
+        mask = np.where(img >= img.mean() if self.thresh is None else self.thresh)  # returns a tuple of length 3
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
         h, w, d = [m[c] for m in mask]  # pull out the chosen idxs
         return h, w, d
 
     def __repr__(self):
-        s = '{name}(output_size={output_size})'
+        s = '{name}(output_size={output_size}, threshold={thresh})'
         d = dict(self.__dict__)
         return s.format(name=self.__class__.__name__, **d)
 
@@ -85,10 +86,10 @@ class RandomCrop2D(CropBase):
     """
 
     def __init__(self, output_size:Union[int,tuple,list], axis:Optional[int]=0,
-                 include_neighbors:bool=False) -> None:
+                 include_neighbors:bool=False, threshold:Optional[float]=None) -> None:
         if axis is not None:
             assert 0 <= axis <= 2
-        super().__init__(2, output_size)
+        super().__init__(2, output_size, threshold)
         self.axis = axis
         self.include_neighbors = include_neighbors
 
@@ -139,8 +140,8 @@ class RandomCrop3D(CropBase):
             If int, cube crop is made.
     """
 
-    def __init__(self, output_size:Union[tuple,int,list]):
-        super().__init__(3, output_size)
+    def __init__(self, output_size:Union[tuple,int,list], threshold:Optional[float]=None):
+        super().__init__(3, output_size, threshold)
 
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         src, tgt = sample
