@@ -62,7 +62,7 @@ class CropBase(BaseTransform):
 
     def _get_sample_idxs(self, img:np.ndarray) -> Tuple[int,int,int]:
         """ get the set of indices from which to sample (foreground) """
-        mask = np.where(img >= img.mean() if self.thresh is None else self.thresh)  # returns a tuple of length 3
+        mask = np.where(img >= (img.mean() if self.thresh is None else self.thresh))  # returns a tuple of length 3
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
         h, w, d = [m[c] for m in mask]  # pull out the chosen idxs
         return h, w, d
