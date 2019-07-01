@@ -166,6 +166,13 @@ class TestUtilities(unittest.TestCase):
         myds = NiftiDataset(self.train_dir, self.train_dir, composed)
         self.assertEqual(myds[0][0].shape, (1,10,10,10))
 
+    def test_aug_block_3d_oblong(self):
+        composed = torch_tfms.Compose([RandomCrop3D(10),
+                                       ToTensor(),
+                                       RandomBlock(1, ((1,4),(1,2),(1,3)), thresh=0, is_3d=True)])
+        myds = NiftiDataset(self.train_dir, self.train_dir, composed)
+        self.assertEqual(myds[0][0].shape, (1,10,10,10))
+
     def test_get_transform(self):
         composed = torch_tfms.Compose(get_transforms([1,1,1,1,1],True,True,15,0.1,0.1,True,True,0.1,0.1,1,(3,4),None,False,(1,),(1,)))
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']

@@ -365,7 +365,9 @@ class RandomNoise:
 class RandomBlock:
     """ add random blocks of random intensity to a sample of images """
     def __init__(self, p, sz_range, thresh=None, int_range=None, tfm_x=True, tfm_y=False, is_3d=False):
-        self.p, self.sz, self.int, self.tfm_x, self.tfm_y = p, sz_range, int_range, tfm_x, tfm_y
+        self.p, self.int, self.tfm_x, self.tfm_y = p, int_range, tfm_x, tfm_y
+        self.sz = sz_range if all([isinstance(szr, (tuple,list)) for szr in sz_range]) else \
+                  (sz_range, sz_range, sz_range) if is_3d else (sz_range, sz_range)
         self.thresh = thresh
         self.is_3d = is_3d
 
@@ -374,16 +376,17 @@ class RandomBlock:
         mask = np.where(src >= (src.mean() if self.thresh is None else self.thresh))
         c = np.random.randint(0, len(mask[1]))  # choose the set of idxs to use
         h, w = [m[c] for m in mask[1:]]  # pull out the chosen idxs (2D)
-        s = random.randrange(*self.sz)
-        if h+s >= hmax: s -= hmax - h+s
-        if w+s >= wmax: s -= wmax - w+s
-        if h-s < 0: s -= h-s
-        if w-s < 0: s -= w-s
-        o = 0 if s % 2 == 0 else 1
-        int_range = self.int if self.int is not None else (int(src.min()), int(src.max())+1)
+        sh, sw = random.randrange(*self.sz[0]), random.randrange(*self.sz[1])
+        if h+sh >= hmax: sh -= hmax - h+sh
+        if w+sw >= wmax: sw -= wmax - w+sw
+        if h-sh < 0: sh -= h-sh
+        if w-sw < 0: sw -= w-sw
+        oh = 0 if sh % 2 == 0 else 1
+        ow = 0 if sw % 2 == 0 else 1
+        int_range = self.int if self.int is not None else (src.min(), src.max()+1)
         if random.random() < self.p:
-            if self.tfm_x: src[:,h-s//2:h+s//2+o,w-s//2:w+s//2+o] = random.randrange(*int_range)
-            if self.tfm_y: tgt[:,h-s//2:h+s//2+o,w-s//2:w+s//2+o] = random.randrange(*int_range)
+            if self.tfm_x: src[:,h-sh//2:h+sh//2+oh,w-sw//2:w+sw//2+ow] = np.random.uniform(*int_range)
+            if self.tfm_y: tgt[:,h-sh//2:h+sh//2+oh,w-sw//2:w+sw//2+ow] = np.random.uniform(*int_range)
         return src, tgt
 
     def block3d(self, src, tgt):
@@ -391,18 +394,20 @@ class RandomBlock:
         mask = np.where(src >= (src.mean() if self.thresh is None else self.thresh))
         c = np.random.randint(0, len(mask[1]))  # choose the set of idxs to use
         h, w, d = [m[c] for m in mask[1:]]  # pull out the chosen idxs (2D)
-        s = random.randrange(*self.sz)
-        if h+s >= hmax: s -= hmax - h+s
-        if w+s >= wmax: s -= wmax - w+s
-        if d+s >= wmax: s -= dmax - d+s
-        if h-s < 0: s -= h-s
-        if w-s < 0: s -= w-s
-        if d-s < 0: s -= d-s
-        o = 0 if s % 2 == 0 else 1
-        int_range = self.int if self.int is not None else (int(src.min()), int(src.max())+1)
+        sh, sw, sd = random.randrange(*self.sz[0]), random.randrange(*self.sz[1]), random.randrange(*self.sz[2])
+        if h+sh >= hmax: sh -= hmax - h+sh
+        if w+sw >= wmax: sw -= wmax - w+sw
+        if d+sd >= wmax: sd -= dmax - d+sd
+        if h-sh < 0: sh -= h-sh
+        if w-sw < 0: sw -= w-sw
+        if d-sd < 0: sd -= d-sd
+        oh = 0 if sh % 2 == 0 else 1
+        ow = 0 if sw % 2 == 0 else 1
+        od = 0 if sd % 2 == 0 else 1
+        int_range = self.int if self.int is not None else (src.min(), src.max()+1)
         if random.random() < self.p:
-            if self.tfm_x: src[:,h-s//2:h+s//2+o,w-s//2:w+s//2+o,d-s//2:d+s//2+o] = random.randrange(*int_range)
-            if self.tfm_y: tgt[:,h-s//2:h+s//2+o,w-s//2:w+s//2+o,d-s//2:d+s//2+o] = random.randrange(*int_range)
+            if self.tfm_x: src[:,h-sh//2:h+sh//2+oh,w-sw//2:w+sw//2+ow,d-sd//2:d+sd//2+od] = np.random.uniform(*int_range)
+            if self.tfm_y: tgt[:,h-sh//2:h+sh//2+oh,w-sw//2:w+sw//2+ow,d-sd//2:d+sd//2+od] = np.random.uniform(*int_range)
         return src, tgt
 
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
