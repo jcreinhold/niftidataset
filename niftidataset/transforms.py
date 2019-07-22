@@ -452,22 +452,45 @@ class Digitize:
         return src, tgt
 
 
+def normalize3d(tensor, mean, std, inplace=False):
+    """
+    normalize a 3d tensor
+
+    Args:
+        tensor (Tensor): Tensor image of size (C, H, W, D) to be normalized.
+        mean (sequence): Sequence of means for each channel.
+        std (sequence): Sequence of standard deviations for each channel.
+
+    Returns:
+        Tensor: Normalized Tensor image.
+    """
+    if not inplace:
+        tensor = tensor.clone()
+
+    mean = torch.as_tensor(mean, dtype=torch.float32, device=tensor.device)
+    std = torch.as_tensor(std, dtype=torch.float32, device=tensor.device)
+    tensor.sub_(mean[:, None, None, None]).div_(std[:, None, None, None])
+    return tensor
+
+
 class Normalize:
     """ implement a normalize function for input two images """
-    def __init__(self, mean, std, tfm_x=True, tfm_y=False):
+    def __init__(self, mean, std, tfm_x=True, tfm_y=False, is_3d=False):
         self.mean = mean
         self.std = std
         self.tfm_x = tfm_x
         self.tfm_y = tfm_y
+        self.is_3d = is_3d
         
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
-        if self.tfm_x: src = tv.transforms.functional.normalize(src, self.mean, self.std)
-        if self.tfm_y: tgt = tv.transforms.functional.normalize(tgt, self.mean, self.std)
+        norm = normalize3d if self.is_3d else tv.transforms.functional.normalize
+        if self.tfm_x: src = norm(src, self.mean, self.std)
+        if self.tfm_y: tgt = norm(tgt, self.mean, self.std)
         return src, tgt
 
     def __repr__(self):
-        s = '{name}(mean={mean}, std={std}, tfm_x={tfm_x}, tfm_y={tfm_y})'
+        s = '{name}(mean={mean}, std={std}, tfm_x={tfm_x}, tfm_y={tfm_y}, is_3d={is_3d})'
         d = dict(self.__dict__)
         return s.format(name=self.__class__.__name__, **d)
 
@@ -496,5 +519,5 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
     if p[4] > 0 and (noise_pwr > 0):
         tfms.append(RandomNoise(p[4], tfm_x, tfm_y, noise_pwr))
     if mean is not None and std is not None:
-        tfms.append(Normalize(mean=mean, std=std))
+        tfms.append(Normalize(mean=mean, std=std, is_3d=is_3d))
     return tfms

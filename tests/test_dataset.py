@@ -173,13 +173,20 @@ class TestUtilities(unittest.TestCase):
         myds = NiftiDataset(self.train_dir, self.train_dir, composed)
         self.assertEqual(myds[0][0].shape, (1,10,10,10))
 
-    def test_get_transform(self):
+    def test_get_transform_2d(self):
         composed = torch_tfms.Compose(get_transforms([1,1,1,1,1],True,True,15,0.1,0.1,True,True,0.1,0.1,1,(3,4),None,False,(1,),(1,)))
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
-        
+
+    def test_get_transform_3d(self):
+        composed = torch_tfms.Compose(get_transforms([0,0,1,1,1],True,True,0,0,0,False,False,0.1,0.1,1,(3,4),None,True,(1,),(1,)))
+        sd, td = [self.train_dir], [self.train_dir]
+        myds = MultimodalNiftiDataset(sd, td, composed)
+        self.assertEqual(myds[0][0].shape, (1, 51, 64, 64))
+        self.assertEqual(myds[0][1].shape, (1, 51, 64, 64))
+
     @unittest.skipIf(fastai is None, "fastai is not installed on this system")
     def test_niftidataset_2d_fastai(self):
         composed = torch_tfms.Compose([RandomCrop2D(10, 0),
