@@ -519,5 +519,5 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
     if p[4] > 0 and (noise_pwr > 0):
         tfms.append(RandomNoise(p[4], tfm_x, tfm_y, noise_pwr))
     if mean is not None and std is not None:
-        tfms.append(Normalize(mean=mean, std=std, is_3d=is_3d))
+        tfms.append(Normalize(mean, std, tfm_x, tfm_y, is_3d))
     return tfms
