@@ -251,7 +251,11 @@ class ToTensor(BaseTransform):
         if isinstance(src, np.ndarray) and isinstance(tgt, np.ndarray):
             return torch.from_numpy(src), torch.from_numpy(tgt)
         # handle PIL images
-        src, tgt = np.asarray(src)[None,...], np.asarray(tgt)[None,...]
+        src, tgt = np.asarray(src), np.asarray(tgt)
+        if src.ndim == 3: src = src.transpose((2,0,1))
+        if tgt.ndim == 3: tgt = tgt.transpose((2,0,1))
+        if src.ndim == 2: src = src[None,...] # add channel dimension
+        if tgt.ndim == 2: tgt = tgt[None,...]
         return torch.from_numpy(src), torch.from_numpy(tgt)
 
 
@@ -274,6 +278,8 @@ class ToPILImage(BaseTransform):
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
         src, tgt = np.squeeze(src), np.squeeze(tgt)
+        if src.ndim == 3: src = src.transpose((1,2,0))
+        if tgt.ndim == 3: tgt = tgt.transpose((1,2,0))
         return Image.fromarray(src, mode=self.mode), Image.fromarray(tgt, mode=self.mode)
 
 

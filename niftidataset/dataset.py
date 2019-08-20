@@ -126,14 +126,23 @@ class MultimodalImageDataset(MultimodalDataset):
         transform (Callable): transform to apply to both source and target images
         ext (str): extension of desired images with * to allow glob to pick up all images in directory
             e.g., `*.tif*` to pick up all TIFF images with ext `.tif` or `.tiff` (may pick up more so be careful)
+        color (bool): images are color, ie, 3 channels
     """
 
-    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None, ext:str='*.tif*'):
+    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None,
+                 ext:str='*.tif*', color:bool=False):
         self.ext = ext
+        self.color = color
         super().__init__(source_dirs, target_dirs, transform)
 
     def glob_imgs(self, path): return glob_imgs(path, ext=self.ext)
     
-    def get_data(self, fn): return np.asarray(Image.open(fn),dtype=np.float32)
+    def get_data(self, fn):
+        data = np.asarray(Image.open(fn), dtype=np.float32)
+        if self.color: data = data.transpose((2,0,1))
+        return data
 
-    def stack(self, imgs): return np.stack(imgs)
+    def stack(self, imgs):
+        data = np.stack(imgs)
+        if self.color: data = data.squeeze()
+        return data
