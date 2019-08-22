@@ -52,7 +52,7 @@ class NiftiDataset(Dataset):
     def __getitem__(self, idx:int):
         if not self.preload:
             src_fn, tgt_fn = self.source_fns[idx], self.target_fns[idx]
-            sample = (nib.load(src_fn).get_data(), nib.load(tgt_fn).get_data())
+            sample = (nib.load(src_fn).get_fdata(dtype=np.float32), nib.load(tgt_fn).get_fdata(dtype=np.float32))
         else:
             sample = self.imgs[idx]
         if self.transform is not None:
@@ -105,7 +105,7 @@ class MultimodalNiftiDataset(MultimodalDataset):
     
     def glob_imgs(self, path): return glob_imgs(path, ext='*.nii*')
     
-    def get_data(self, fn): return nib.load(fn).get_data().astype(np.float32)
+    def get_data(self, fn): return nib.load(fn).get_fdata(dtype=np.float32)
 
     def stack(self, imgs): return np.stack(imgs)
 
