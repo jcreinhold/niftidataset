@@ -252,8 +252,8 @@ class ToTensor(BaseTransform):
             return torch.from_numpy(src), torch.from_numpy(tgt)
         # handle PIL images
         src, tgt = np.asarray(src), np.asarray(tgt)
-        if src.ndim == 3: src = src.transpose((2,0,1))
-        if tgt.ndim == 3: tgt = tgt.transpose((2,0,1))
+        if src.ndim == 3: src = src.transpose((2,0,1)).astype(np.float32)
+        if tgt.ndim == 3: tgt = tgt.transpose((2,0,1)).astype(np.float32)
         if src.ndim == 2: src = src[None,...] # add channel dimension
         if tgt.ndim == 2: tgt = tgt[None,...]
         return torch.from_numpy(src), torch.from_numpy(tgt)
@@ -278,9 +278,10 @@ class ToPILImage(BaseTransform):
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
         src, tgt = np.squeeze(src), np.squeeze(tgt)
-        if src.ndim == 3: src = src.transpose((1,2,0))
-        if tgt.ndim == 3: tgt = tgt.transpose((1,2,0))
-        return Image.fromarray(src, mode=self.mode), Image.fromarray(tgt, mode=self.mode)
+        src_mode = tgt_mode = self.mode
+        if src.ndim == 3: src, src_mode = src.transpose((1,2,0)).astype(np.uint8), 'RGB'
+        if tgt.ndim == 3: tgt, tgt_mode = tgt.transpose((1,2,0)).astype(np.uint8), 'RGB'
+        return Image.fromarray(src, mode=src_mode), Image.fromarray(tgt, mode=tgt_mode)
 
 
 class RandomAffine(tv.transforms.RandomAffine):
