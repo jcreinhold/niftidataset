@@ -384,12 +384,12 @@ class RandomBlock:
         c = np.random.randint(0, len(mask[1]))  # choose the set of idxs to use
         h, w = [m[c] for m in mask[1:]]  # pull out the chosen idxs (2D)
         sh, sw = random.randrange(*self.sz[0]), random.randrange(*self.sz[1])
-        if h+sh >= hmax: sh -= hmax - h+sh
-        if w+sw >= wmax: sw -= wmax - w+sw
-        if h-sh < 0: sh -= h-sh
-        if w-sw < 0: sw -= w-sw
         oh = 0 if sh % 2 == 0 else 1
         ow = 0 if sw % 2 == 0 else 1
+        if h+(sh//2)+oh >= hmax: h = hmax - (sh//2) - oh
+        if w+(sw//2)+ow >= wmax: w = wmax - (sw//2) - ow
+        if h-(sh//2) < 0: h = sh//2
+        if w-(sw//2) < 0: w = sw//2
         int_range = self.int if self.int is not None else (src.min(), src.max()+1)
         if random.random() < self.p:
             if self.tfm_x: src[:,h-sh//2:h+sh//2+oh,w-sw//2:w+sw//2+ow] = np.random.uniform(*int_range)
@@ -402,15 +402,15 @@ class RandomBlock:
         c = np.random.randint(0, len(mask[1]))  # choose the set of idxs to use
         h, w, d = [m[c] for m in mask[1:]]  # pull out the chosen idxs (2D)
         sh, sw, sd = random.randrange(*self.sz[0]), random.randrange(*self.sz[1]), random.randrange(*self.sz[2])
-        if h+sh >= hmax: sh -= hmax - h+sh
-        if w+sw >= wmax: sw -= wmax - w+sw
-        if d+sd >= wmax: sd -= dmax - d+sd
-        if h-sh < 0: sh -= h-sh
-        if w-sw < 0: sw -= w-sw
-        if d-sd < 0: sd -= d-sd
         oh = 0 if sh % 2 == 0 else 1
         ow = 0 if sw % 2 == 0 else 1
         od = 0 if sd % 2 == 0 else 1
+        if h+(sh//2)+oh >= hmax: h = hmax - (sh//2) - oh
+        if w+(sw//2)+ow >= wmax: w = wmax - (sw//2) - ow
+        if d+(sd//2)+od >= dmax: d = dmax - (sd//2) - od
+        if h-(sh//2) < 0: h = sh//2
+        if w-(sw//2) < 0: w = sw//2
+        if d-(sd//2) < 0: d = sd//2
         int_range = self.int if self.int is not None else (src.min(), src.max()+1)
         if random.random() < self.p:
             if self.tfm_x: src[:,h-sh//2:h+sh//2+oh,w-sw//2:w+sw//2+ow,d-sd//2:d+sd//2+od] = np.random.uniform(*int_range)
