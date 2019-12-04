@@ -47,7 +47,8 @@ class BaseTransform:
 class CropBase(BaseTransform):
     """ base class for crop transform """
 
-    def __init__(self, out_dim:int, output_size:Union[tuple,int,list], threshold:Optional[float]=None):
+    def __init__(self, out_dim:int, output_size:Union[tuple,int,list], threshold:Optional[float]=None,
+                 pct:Tuple[float,float]=(0.,1.), axis=0):
         """ provide the common functionality for RandomCrop2D and RandomCrop3D """
         assert isinstance(output_size, (int, tuple, list))
         if isinstance(output_size, int):
@@ -59,13 +60,31 @@ class CropBase(BaseTransform):
             self.output_size = output_size
         self.out_dim = out_dim
         self.thresh = threshold
+        self.pct = pct
+        self.axis = axis
 
-    def _get_sample_idxs(self, img:np.ndarray) -> Tuple[int,int,int]:
+    def _get_sample_idxs(self, img: np.ndarray) -> Tuple[int, int, int]:
         """ get the set of indices from which to sample (foreground) """
         mask = np.where(img >= (img.mean() if self.thresh is None else self.thresh))  # returns a tuple of length 3
         c = np.random.randint(0, len(mask[0]))  # choose the set of idxs to use
         h, w, d = [m[c] for m in mask]  # pull out the chosen idxs
         return h, w, d
+
+    def _offset_by_pct(self, h, w, d):
+        s = (h, w, d)
+        hml = wml = dml = 0
+        hmh = wmh = dmh = 0
+        i0, i1 = int(s[self.axis] * self.pct[0]), int(s[self.axis] * (1. - self.pct[1]))
+        if self.axis == 0:
+            hml += i0;
+            hmh += i1
+        elif self.axis == 1:
+            wml += i0;
+            wmh += i1
+        else:
+            dml += i0;
+            dmh += i1
+        return (hml, wml, dml), (hmh, wmh, dmh)
 
     def __repr__(self):
         s = '{name}(output_size={output_size}, threshold={thresh})'
@@ -140,18 +159,20 @@ class RandomCrop3D(CropBase):
             If int, cube crop is made.
     """
 
-    def __init__(self, output_size:Union[tuple,int,list], threshold:Optional[float]=None):
-        super().__init__(3, output_size, threshold)
+    def __init__(self, output_size:Union[tuple,int,list], threshold:Optional[float]=None,
+                pct:Tuple[float,float]=(0.,1.), axis=0):
+        super().__init__(3, output_size, threshold, pct, axis)
 
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[np.ndarray,np.ndarray]:
         src, tgt = sample
         *cs, h, w, d = src.shape
         *ct, _, _, _ = tgt.shape
         hh, ww, dd = self.output_size
-        max_idxs = (h-hh//2, w-ww//2, d-dd//2)
-        min_idxs = (hh//2, ww//2, dd//2)
+        (hml, wml, dml), (hmh, wmh, dmh) = self._offset_by_pct(h,w,d)
+        max_idxs = (h-hmh-hh//2, w-wmh-ww//2, d-dmh-dd//2)
+        min_idxs = (hml+hh//2, wml+ww//2, dml+dd//2)
         s = src[0] if len(cs) > 0 else src  # use the first image to determine sampling if multimodal
-        s_idxs = super()._get_sample_idxs(s)
+        s_idxs = self._get_sample_idxs(s)
         i, j, k = [i if min_i <= i <= max_i else max_i if i > max_i else min_i
                    for max_i, min_i, i in zip(max_idxs, min_idxs, s_idxs)]
         oh = 0 if hh % 2 == 0 else 1
