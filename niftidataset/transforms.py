@@ -329,7 +329,7 @@ class RandomAffine(tv.transforms.RandomAffine):
         self.resample = resample
         self.segmentation = segmentation
 
-    def affine(self, x, params, resample=Image.NEAREST):
+    def affine(self, x, params, resample=Image.BILINEAR):
         return TF.affine(x, *params, resample=resample, fillcolor=0)
 
     def __call__(self, sample:Tuple[PILImage, PILImage]):
@@ -337,9 +337,9 @@ class RandomAffine(tv.transforms.RandomAffine):
         ret = self.get_params(self.degrees, self.translate, self.scale, None, tgt.size)
         if self.degrees[1] > 0 and random.random() < self.p:
             if not isinstance(src, list):
-                src = self.affine(src, ret)
+                src = self.affine(src, ret, self.resample)
             else:
-                src = [self.affine(s, ret) for s in src]
+                src = [self.affine(s, ret, self.resample) for s in src]
             resample = Image.NEAREST if self.segmentation else self.resample
             if not isinstance(tgt, list):
                 tgt = self.affine(tgt, ret, resample)
