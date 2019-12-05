@@ -470,6 +470,7 @@ class RandomBlock:
         if w-(sw//2) < 0: w = sw//2
         if d-(sd//2) < 0: d = sd//2
         int_range = self.int if self.int is not None else (src.min(), src.max()+1)
+        if isinstance(src, torch.Tensor): src, tgt = src.clone(), tgt.clone()
         if random.random() < self.p:
             if self.tfm_x: src[:,h-sh//2:h+sh//2+oh,w-sw//2:w+sw//2+ow,d-sd//2:d+sd//2+od] = np.random.uniform(*int_range)
             if self.tfm_y: tgt[:,h-sh//2:h+sh//2+oh,w-sw//2:w+sw//2+ow,d-sd//2:d+sd//2+od] = np.random.uniform(*int_range)
