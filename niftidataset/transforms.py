@@ -321,14 +321,16 @@ class ToPILImage(BaseTransform):
 
 class RandomAffine(tv.transforms.RandomAffine):
     """ apply random affine transformations to a sample of images """
-    def __init__(self, p:float, degrees:float, translate:float=0, scale:float=0, resample:int=Image.BILINEAR):
+    def __init__(self, p:float, degrees:float, translate:float=0, scale:float=0, resample:int=Image.BILINEAR,
+                 segmentation=False):
         self.p = p
         self.degrees, self.translate, self.scale = (-degrees,degrees), (translate,translate), (1-scale,1+scale)
         self.shear, self.fillcolor = None, 0
         self.resample = resample
+        self.segmentation = segmentation
 
-    def affine(self, x, params):
-        return TF.affine(x, *params, resample=self.resample, fillcolor=0)
+    def affine(self, x, params, resample=Image.NEAREST):
+        return TF.affine(x, *params, resample=resample, fillcolor=0)
 
     def __call__(self, sample:Tuple[PILImage, PILImage]):
         src, tgt = sample
@@ -338,10 +340,11 @@ class RandomAffine(tv.transforms.RandomAffine):
                 src = self.affine(src, ret)
             else:
                 src = [self.affine(s, ret) for s in src]
+            resample = Image.NEAREST if self.segmentation else self.resample
             if not isinstance(tgt, list):
-                tgt = self.affine(tgt, ret)
+                tgt = self.affine(tgt, ret, resample)
             else:
-                tgt = [self.affine(t, ret) for t in tgt]
+                tgt = [self.affine(t, ret, resample) for t in tgt]
         return src, tgt
 
 
@@ -566,7 +569,7 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
                    gamma:float=0, gain:float=0, noise_pwr:float=0, block:Optional[Tuple[int,int]]=None,
                    thresh:Optional[float]=None, is_3d:bool=False,
                    mean:Optional[Tuple[float]]=None, std:Optional[Tuple[float]]=None,
-                   color:bool=False):
+                   color:bool=False, segmentation:bool=False):
     """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
     if isinstance(p, float): p = [p] * 5
     tfms = []
@@ -575,7 +578,7 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
     if do_affine or do_flip:
         tfms.append(ToPILImage(color=color))
     if do_affine:
-        tfms.append(RandomAffine(p[0], degrees, translate, scale))
+        tfms.append(RandomAffine(p[0], degrees, translate, scale, segmentation=segmentation))
     if do_flip:
         tfms.append(RandomFlip(p[1], vflip, hflip))
     tfms.append(ToTensor(color))
