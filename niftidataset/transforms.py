@@ -293,15 +293,16 @@ class ToFastaiImage(BaseTransform):
 
 class ToPILImage(BaseTransform):
     """ convert 2D image to PIL image """
-    def __init__(self, mode='F'):
+    def __init__(self, mode='F', color=False):
         self.mode = mode
+        self.color = color
 
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
         src, tgt = np.squeeze(src), np.squeeze(tgt)
         src_mode = tgt_mode = self.mode
-        if src.ndim == 3: src, src_mode = src.transpose((1,2,0)).astype(np.uint8), 'RGB'
-        if tgt.ndim == 3: tgt, tgt_mode = tgt.transpose((1,2,0)).astype(np.uint8), 'RGB'
+        if src.ndim == 3 and self.color: src, src_mode = src.transpose((1,2,0)).astype(np.uint8), 'RGB'
+        if tgt.ndim == 3 and self.color: tgt, tgt_mode = tgt.transpose((1,2,0)).astype(np.uint8), 'RGB'
         return Image.fromarray(src, mode=src_mode), Image.fromarray(tgt, mode=tgt_mode)
 
 
@@ -527,14 +528,15 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
                    translate:float=None, scale:float=None, vflip:bool=False, hflip:bool=False,
                    gamma:float=0, gain:float=0, noise_pwr:float=0, block:Optional[Tuple[int,int]]=None,
                    thresh:Optional[float]=None, is_3d:bool=False,
-                   mean:Optional[Tuple[float]]=None, std:Optional[Tuple[float]]=None):
+                   mean:Optional[Tuple[float]]=None, std:Optional[Tuple[float]]=None,
+                   color:bool=False):
     """ get many desired transforms in a way s.t. can apply to nifti/tiffdatasets """
     if isinstance(p, float): p = [p] * 5
     tfms = []
     do_affine = p[0] > 0 and (degrees > 0 or translate > 0 or scale > 0)
     do_flip = p[1] > 0 and (vflip or hflip)
     if do_affine or do_flip:
-        tfms.append(ToPILImage())
+        tfms.append(ToPILImage(color=color))
     if do_affine:
         tfms.append(RandomAffine(p[0], degrees, translate, scale))
     if do_flip:
