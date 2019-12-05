@@ -187,6 +187,13 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
 
+    def test_get_transform_2d_multi(self):
+        composed = torch_tfms.Compose(get_transforms([1,1,1,1,1],True,True,15,0.1,0.1,True,True,0.1,0.1,1,(3,4),None,False,(1,),(1,)))
+        sd, td = [self.train_dir+'/1/'] * 2, [self.train_dir+'/2/']
+        myds = MultimodalImageDataset(sd, td, composed, segmentation=True)
+        self.assertEqual(myds[0][0].shape, (2,256,256))
+        self.assertEqual(myds[0][1].shape, (256,256))
+
     def test_get_transform_3d(self):
         composed = torch_tfms.Compose(get_transforms([0,0,1,1,1],True,True,0,0,0,False,False,0.1,0.1,1,(3,4),None,True,(1,),(1,)))
         sd, td = [self.train_dir], [self.train_dir]

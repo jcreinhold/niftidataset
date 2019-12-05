@@ -267,14 +267,19 @@ class RandomSlice(BaseTransform):
 
 class ToTensor(BaseTransform):
     """ Convert images in sample to Tensors """
+    def __init__(self, color=False):
+        self.color = color
+
     def __call__(self, sample:Tuple[np.ndarray,np.ndarray]) -> Tuple[torch.Tensor,torch.Tensor]:
         src, tgt = sample
         if isinstance(src, np.ndarray) and isinstance(tgt, np.ndarray):
             return torch.from_numpy(src), torch.from_numpy(tgt)
+        if isinstance(src, list): src = np.stack(src)
+        if isinstance(tgt, list): src = np.stack(tgt)
         # handle PIL images
         src, tgt = np.asarray(src), np.asarray(tgt)
-        if src.ndim == 3: src = src.transpose((2,0,1)).astype(np.float32)
-        if tgt.ndim == 3: tgt = tgt.transpose((2,0,1)).astype(np.float32)
+        if src.ndim == 3 and self.color: src = src.transpose((2,0,1)).astype(np.float32)
+        if tgt.ndim == 3 and self.color: tgt = tgt.transpose((2,0,1)).astype(np.float32)
         if src.ndim == 2: src = src[None,...] # add channel dimension
         if tgt.ndim == 2: tgt = tgt[None,...]
         return torch.from_numpy(src), torch.from_numpy(tgt)
@@ -293,17 +298,25 @@ class ToFastaiImage(BaseTransform):
 
 class ToPILImage(BaseTransform):
     """ convert 2D image to PIL image """
-    def __init__(self, mode='F', color=False):
-        self.mode = mode
+    def __init__(self, color=False):
         self.color = color
 
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
         src, tgt = np.squeeze(src), np.squeeze(tgt)
-        src_mode = tgt_mode = self.mode
-        if src.ndim == 3 and self.color: src, src_mode = src.transpose((1,2,0)).astype(np.uint8), 'RGB'
-        if tgt.ndim == 3 and self.color: tgt, tgt_mode = tgt.transpose((1,2,0)).astype(np.uint8), 'RGB'
-        return Image.fromarray(src, mode=src_mode), Image.fromarray(tgt, mode=tgt_mode)
+        if src.ndim == 3 and self.color:
+            src = Image.fromarray(src.transpose((1,2,0)).astype(np.uint8))
+        elif src.ndim == 2:
+            src = Image.fromarray(src)
+        else:
+            src = [Image.fromarray(s) for s in src]
+        if tgt.ndim == 3 and self.color:
+            tgt = Image.fromarray(tgt.transpose((1,2,0)).astype(np.uint8))
+        elif tgt.ndim == 2:
+            tgt = Image.fromarray(tgt)
+        else:
+            tgt = [Image.fromarray(t) for t in tgt]
+        return src, tgt
 
 
 class RandomAffine(tv.transforms.RandomAffine):
@@ -314,12 +327,21 @@ class RandomAffine(tv.transforms.RandomAffine):
         self.shear, self.fillcolor = None, 0
         self.resample = resample
 
+    def affine(self, x, params):
+        return TF.affine(x, *params, resample=self.resample, fillcolor=0)
+
     def __call__(self, sample:Tuple[PILImage, PILImage]):
         src, tgt = sample
-        ret = self.get_params(self.degrees, self.translate, self.scale, None, src.size)
+        ret = self.get_params(self.degrees, self.translate, self.scale, None, tgt.size)
         if self.degrees[1] > 0 and random.random() < self.p:
-            src = TF.affine(src, *ret, resample=self.resample, fillcolor=0)
-            tgt = TF.affine(tgt, *ret, resample=self.resample, fillcolor=0)
+            if not isinstance(src, list):
+                src = self.affine(src, ret)
+            else:
+                src = [self.affine(s, ret) for s in src]
+            if not isinstance(tgt, list):
+                tgt = self.affine(tgt, ret)
+            else:
+                tgt = [self.affine(t, ret) for t in tgt]
         return src, tgt
 
 
@@ -331,9 +353,23 @@ class RandomFlip:
     def __call__(self, sample:Tuple[PILImage,PILImage]):
         src, tgt = sample
         if self.vflip and random.random() < self.p:
-            src, tgt = TF.vflip(src), TF.vflip(tgt)
+            if not isinstance(src, list):
+                src = TF.vflip(src)
+            else:
+                src = [TF.vflip(s) for s in src]
+            if not isinstance(tgt, list):
+                tgt = TF.vflip(tgt)
+            else:
+                tgt = [TF.vflip(t) for t in tgt]
         if self.hflip and random.random() < self.p:
-            src, tgt = TF.hflip(src), TF.hflip(tgt)
+            if not isinstance(src, list):
+                src = TF.hflip(src)
+            else:
+                src = [TF.hflip(s) for s in src]
+            if not isinstance(tgt, list):
+                tgt = TF.hflip(tgt)
+            else:
+                tgt = [TF.hflip(t) for t in tgt]
         return src, tgt
 
     def __repr__(self):
@@ -541,7 +577,7 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
         tfms.append(RandomAffine(p[0], degrees, translate, scale))
     if do_flip:
         tfms.append(RandomFlip(p[1], vflip, hflip))
-    tfms.append(ToTensor())
+    tfms.append(ToTensor(color))
     if p[2] > 0 and (gamma is not None or gain is not None):
         tfms.append(RandomGamma(p[2], tfm_y, gamma, gain))
     if p[3] > 0 and (block is not None):
