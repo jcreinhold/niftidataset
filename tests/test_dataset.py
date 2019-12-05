@@ -94,21 +94,28 @@ class TestUtilities(unittest.TestCase):
         myds = MultimodalNiftiDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (3,10,10,10))
         self.assertEqual(myds[0][1].shape, (2,10,10,10))
-    
+
     def test_multimodaltiff(self):
         composed = torch_tfms.Compose([ToTensor()])
         sd, td = [self.train_dir+'/1/'] * 3, [self.train_dir+'/2/'] * 2
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (3,256,256))
         self.assertEqual(myds[0][1].shape, (2,256,256))
-        
+
+    def test_multimodaltiff_seg(self):
+        composed = torch_tfms.Compose([ToTensor()])
+        sd, td = [self.train_dir + '/1/'] * 3, [self.train_dir + '/2/']
+        myds = MultimodalImageDataset(sd, td, composed, segmentation=True)
+        self.assertEqual(myds[0][0].shape, (3, 256, 256))
+        self.assertEqual(myds[0][1].shape, (256, 256))
+
     def test_multimodaltiff_crop(self):
         composed = torch_tfms.Compose([ToTensor(), RandomCrop(32)])
         sd, td = [self.train_dir+'/1/'] * 3, [self.train_dir+'/2/'] * 2
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (3,32,32))
         self.assertEqual(myds[0][1].shape, (2,32,32))
-        
+
     def test_aug_affine_2d(self):
         composed = torch_tfms.Compose([ToPILImage(),
                                        RandomAffine(1, 15, 0.1, 0.1),
@@ -117,7 +124,7 @@ class TestUtilities(unittest.TestCase):
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
-        
+
     def test_aug_flip_2d(self):
         composed = torch_tfms.Compose([ToPILImage(),
                                        RandomFlip(1, True, True),
@@ -126,7 +133,7 @@ class TestUtilities(unittest.TestCase):
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
-        
+
     def test_aug_intensity_2d(self):
         composed = torch_tfms.Compose([ToTensor(),
                                        RandomGamma(1, True, 0.1, 0.1)])
@@ -134,7 +141,7 @@ class TestUtilities(unittest.TestCase):
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
-        
+
     def test_aug_noise_2d(self):
         composed = torch_tfms.Compose([ToTensor(),
                                        RandomNoise(1, True, True, 1)])
@@ -142,7 +149,7 @@ class TestUtilities(unittest.TestCase):
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))       
-        
+
     def test_aug_digitize_2d(self):
         composed = torch_tfms.Compose([Digitize(True, True, (1,100), 1),
                                        ToTensor()])
@@ -150,7 +157,7 @@ class TestUtilities(unittest.TestCase):
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
         self.assertEqual(myds[0][1].shape, (1,256,256))
-        
+
     def test_aug_block_2d(self):
         composed = torch_tfms.Compose([ToTensor(),
                                        RandomBlock(1, (1,100))])

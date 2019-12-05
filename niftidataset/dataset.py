@@ -63,10 +63,11 @@ class NiftiDataset(Dataset):
 class MultimodalDataset(Dataset):
     """ base class for Multimodal*Dataset """
     
-    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None):
+    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None, segmentation:bool=False):
         self.source_dirs, self.target_dirs = source_dirs, target_dirs
         self.source_fns, self.target_fns = [self.glob_imgs(sd) for sd in source_dirs], [self.glob_imgs(td) for td in target_dirs]
         self.transform = transform
+        self.segmentation = segmentation
         if any([len(self.source_fns[0]) != len(sfn) for sfn in self.source_fns]) or \
            any([len(self.target_fns[0]) != len(tfn) for tfn in self.target_fns]) or \
            len(self.source_fns[0]) != len(self.target_fns[0]) or \
@@ -82,6 +83,8 @@ class MultimodalDataset(Dataset):
                   self.stack([self.get_data(t) for t in tgt_fns]))
         if self.transform is not None:
             sample = self.transform(sample)
+        if self.segmentation:
+            sample = (sample[0], sample[1].squeeze().long())  # for segmentation, loss expects no channel dim
         return sample
 
     def glob_imgs(self, path): raise NotImplementedError
@@ -129,14 +132,14 @@ class MultimodalImageDataset(MultimodalDataset):
         color (bool): images are color, ie, 3 channels
     """
 
-    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None,
+    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None, segmentation:bool=False,
                  ext:str='*.tif*', color:bool=False):
         self.ext = ext
         self.color = color
-        super().__init__(source_dirs, target_dirs, transform)
+        super().__init__(source_dirs, target_dirs, transform, segmentation)
 
     def glob_imgs(self, path): return glob_imgs(path, ext=self.ext)
-    
+
     def get_data(self, fn):
         data = np.asarray(Image.open(fn), dtype=np.float32)
         if self.color: data = data.transpose((2,0,1))
