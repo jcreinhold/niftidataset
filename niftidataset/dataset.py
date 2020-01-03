@@ -63,24 +63,35 @@ class NiftiDataset(Dataset):
 class MultimodalDataset(Dataset):
     """ base class for Multimodal*Dataset """
     
-    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None, segmentation:bool=False):
+    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None,
+                 segmentation:bool=False, preload:bool=False):
         self.source_dirs, self.target_dirs = source_dirs, target_dirs
         self.source_fns, self.target_fns = [self.glob_imgs(sd) for sd in source_dirs], [self.glob_imgs(td) for td in target_dirs]
         self.transform = transform
         self.segmentation = segmentation
+        self.preload = preload
         if any([len(self.source_fns[0]) != len(sfn) for sfn in self.source_fns]) or \
            any([len(self.target_fns[0]) != len(tfn) for tfn in self.target_fns]) or \
            len(self.source_fns[0]) != len(self.target_fns[0]) or \
            len(self.source_fns[0]) == 0:
             raise ValueError(f'Number of source and target images must be equal and non-zero')
-    
+        if preload:
+            self.imgs = []
+            for idx in range(len(self.source_fns[0])):
+                src_fns, tgt_fns = [sfns[idx] for sfns in self.source_fns], [tfns[idx] for tfns in self.target_fns]
+                self.imgs.append((self.stack([self.get_data(s) for s in src_fns]),
+                                  self.stack([self.get_data(t) for t in tgt_fns])))
+
     def __len__(self):
         return len(self.source_fns[0])
     
     def __getitem__(self, idx:int):
-        src_fns, tgt_fns = [sfns[idx] for sfns in self.source_fns], [tfns[idx] for tfns in self.target_fns]
-        sample = (self.stack([self.get_data(s) for s in src_fns]),
-                  self.stack([self.get_data(t) for t in tgt_fns]))
+        if not self.preload:
+            src_fns, tgt_fns = [sfns[idx] for sfns in self.source_fns], [tfns[idx] for tfns in self.target_fns]
+            sample = (self.stack([self.get_data(s) for s in src_fns]),
+                      self.stack([self.get_data(t) for t in tgt_fns]))
+        else:
+            sample = self.imgs[idx]
         if self.transform is not None:
             sample = self.transform(sample)
         if self.segmentation:
@@ -133,10 +144,10 @@ class MultimodalImageDataset(MultimodalDataset):
     """
 
     def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None, segmentation:bool=False,
-                 ext:str='*.tif*', color:bool=False):
+                 ext:str='*.tif*', color:bool=False, preload:bool=False):
         self.ext = ext
         self.color = color
-        super().__init__(source_dirs, target_dirs, transform, segmentation)
+        super().__init__(source_dirs, target_dirs, transform, segmentation, preload)
 
     def glob_imgs(self, path): return glob_imgs(path, ext=self.ext)
 

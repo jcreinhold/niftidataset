@@ -95,10 +95,25 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds[0][0].shape, (3,10,10,10))
         self.assertEqual(myds[0][1].shape, (2,10,10,10))
 
+    def test_multimodalnifti_preload(self):
+        composed = torch_tfms.Compose([RandomCrop3D(10),
+                                       ToTensor()])
+        sd, td = [self.train_dir] * 3, [self.train_dir] * 2
+        myds = MultimodalNiftiDataset(sd, td, composed, preload=True)
+        self.assertEqual(myds[0][0].shape, (3,10,10,10))
+        self.assertEqual(myds[0][1].shape, (2,10,10,10))
+
     def test_multimodaltiff(self):
         composed = torch_tfms.Compose([ToTensor()])
         sd, td = [self.train_dir+'/1/'] * 3, [self.train_dir+'/2/'] * 2
         myds = MultimodalImageDataset(sd, td, composed)
+        self.assertEqual(myds[0][0].shape, (3,256,256))
+        self.assertEqual(myds[0][1].shape, (2,256,256))
+
+    def test_multimodaltiff_preload(self):
+        composed = torch_tfms.Compose([ToTensor()])
+        sd, td = [self.train_dir+'/1/'] * 3, [self.train_dir+'/2/'] * 2
+        myds = MultimodalImageDataset(sd, td, composed, preload=True)
         self.assertEqual(myds[0][0].shape, (3,256,256))
         self.assertEqual(myds[0][1].shape, (2,256,256))
 
