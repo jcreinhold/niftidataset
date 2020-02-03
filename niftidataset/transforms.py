@@ -21,6 +21,7 @@ __all__ = ['RandomCrop2D',
            'FixIntensityRange',
            'Normalize',
            'Digitize',
+           'MedianFilter',
            'RandomAffine',
            'RandomBlock',
            'RandomFlip',
@@ -36,6 +37,8 @@ from PIL import Image
 import torch
 import torchvision as tv
 import torchvision.transforms.functional as TF
+
+from .errors import NiftiDatasetError
 
 PILImage = type(Image)
 
@@ -563,7 +566,25 @@ class Normalize:
         d = dict(self.__dict__)
         return s.format(name=self.__class__.__name__, **d)
 
-    
+
+class MedianFilter:
+    """ median filter the sample """
+    def __init__(self, tfm_x=True, tfm_y=False):
+        try:
+            from skimage.filters import median
+        except (ModuleNotFoundError, ImportError):
+            raise NiftiDatasetError('scikit-image not installed, cannot use median filter')
+        self.filter = median
+        self.tfm_x = tfm_x
+        self.tfm_y = tfm_y
+
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
+        src, tgt = sample
+        if self.tfm_x: src = self.filter(src)
+        if self.tfm_y: tgt = self.filter(tgt)
+        return src, tgt
+
+
 def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:float=0,
                    translate:float=None, scale:float=None, vflip:bool=False, hflip:bool=False,
                    gamma:float=0, gain:float=0, noise_pwr:float=0, block:Optional[Tuple[int,int]]=None,
