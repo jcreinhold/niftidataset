@@ -580,8 +580,8 @@ class MedianFilter:
 
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
-        if self.tfm_x: src = self.filter(src)
-        if self.tfm_y: tgt = self.filter(tgt)
+        if self.tfm_x: src = self.filter(src, 3)
+        if self.tfm_y: tgt = self.filter(tgt, 3)
         return src, tgt
 
 
