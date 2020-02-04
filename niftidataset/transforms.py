@@ -571,10 +571,10 @@ class MedianFilter:
     """ median filter the sample """
     def __init__(self, tfm_x=True, tfm_y=False):
         try:
-            from skimage.filters import median
+            from scipy.ndimage.filters import median_filter
         except (ModuleNotFoundError, ImportError):
-            raise NiftiDatasetError('scikit-image not installed, cannot use median filter')
-        self.filter = median
+            raise NiftiDatasetError('scipy not installed, cannot use median filter')
+        self.filter = median_filter
         self.tfm_x = tfm_x
         self.tfm_y = tfm_y
 
