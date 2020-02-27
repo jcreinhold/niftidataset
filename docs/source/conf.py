@@ -18,13 +18,14 @@ import os
 import sys
 
 MOCK_MODULES = ['torch', 'torch.utils', 'torch.utils.data', 'torch.utils.data.dataset', 'numpy', 'nibabel',
-                'fastai','fastai.vision', 'PIL',',matplotlib','matplotlib.pyplot','typing']
+                'fastai','fastai.vision', 'PIL',',matplotlib','matplotlib.pyplot','torchvision',
+                'torchvision.transforms','torchvision.transforms.functional']
 
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
 # this should not be needed with the above, but meh
-autodoc_mock_imports = ['nibabel','numpy', 'torch','fastai','PIL','matplotlib','typing']
+autodoc_mock_imports = ['nibabel','numpy', 'torch','fastai','PIL','matplotlib','torchvision']
 
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
@@ -37,7 +38,7 @@ sys.path.insert(0, local_path)
 # -- Project information -----------------------------------------------------
 
 project = 'niftidataset'
-copyright = '2018, Jacob Reinhold'
+copyright = '2020, Jacob Reinhold'
 author = 'Jacob Reinhold'
 
 # The short X.Y version
