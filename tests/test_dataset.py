@@ -69,7 +69,7 @@ class TestUtilities(unittest.TestCase):
                                        AddChannel()])
         myds = NiftiDataset(self.train_dir, self.train_dir, composed, preload=True)
         self.assertEqual(myds[0][0].shape, (1,1,10,10,10))
-        
+
     def test_multimodalnifti_2d(self):
         composed = torch_tfms.Compose([RandomCrop2D(10, 0),
                                        ToTensor(),
@@ -96,12 +96,11 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds[0][1].shape, (2,10,10,10))
 
     def test_multimodalnifti_2p5D(self):
-        composed = torch_tfms.Compose([RandomCrop3D(10),
-                                       ToTensor()])
+        composed = torch_tfms.Compose([ToTensor()])
         sd, td = [self.train_dir] * 3, [self.train_dir] * 2
         myds = MultimodalNifti2p5DDataset(sd, td, composed)
-        self.assertEqual(myds[0][0].shape, (3*10,10,10))
-        self.assertEqual(myds[0][1].shape, (2*10,10,10))
+        self.assertEqual(myds[0][0].shape, (3*51,64,64))
+        self.assertEqual(myds[0][1].shape, (2*51,64,64))
 
     def test_multimodalnifti_preload(self):
         composed = torch_tfms.Compose([RandomCrop3D(10),
@@ -171,7 +170,7 @@ class TestUtilities(unittest.TestCase):
         sd, td = [self.train_dir+'/1/'], [self.train_dir+'/2/']
         myds = MultimodalImageDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1,256,256))
-        self.assertEqual(myds[0][1].shape, (1,256,256))       
+        self.assertEqual(myds[0][1].shape, (1,256,256))
 
     def test_aug_digitize_2d(self):
         composed = torch_tfms.Compose([Digitize(True, True, (1,100), 1),
@@ -244,7 +243,7 @@ class TestUtilities(unittest.TestCase):
         print(data.train_ds[0])
         data.show_batch(rows=1)
         self.assertEqual(data.train_ds[0][0].data[0].shape, (1,256,256))
-        
+
     def tearDown(self):
         shutil.rmtree(self.out_dir)
 
