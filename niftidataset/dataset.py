@@ -137,7 +137,12 @@ class MultimodalNifti2p5DDataset(MultimodalNiftiDataset):
         target_dirs (List[str]): paths to target images
         transform (Callable): transform to apply to both source and target images
     """
-    def stack(self, imgs): return np.concatenate(imgs, axis=0)
+    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None,
+                 segmentation:bool=False, preload:bool=False, axis:int=0):
+        self.axis = axis
+        super().__init__(source_dirs, target_dirs, transform, segmentation, preload)
+
+    def stack(self, imgs): return np.swapaxes(np.concatenate(imgs, axis=self.axis), 0, self.axis)
 
 
 class MultimodalImageDataset(MultimodalDataset):
