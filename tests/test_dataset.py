@@ -95,6 +95,14 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds[0][0].shape, (3,10,10,10))
         self.assertEqual(myds[0][1].shape, (2,10,10,10))
 
+    def test_multimodalnifti_2p5D(self):
+        composed = torch_tfms.Compose([RandomCrop3D(10),
+                                       ToTensor()])
+        sd, td = [self.train_dir] * 3, [self.train_dir] * 2
+        myds = MultimodalNifti2p5DDataset(sd, td, composed)
+        self.assertEqual(myds[0][0].shape, (3*10,10,10))
+        self.assertEqual(myds[0][1].shape, (2*10,10,10))
+
     def test_multimodalnifti_preload(self):
         composed = torch_tfms.Compose([RandomCrop3D(10),
                                        ToTensor()])

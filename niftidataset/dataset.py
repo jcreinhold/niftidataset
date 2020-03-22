@@ -12,6 +12,7 @@ Created on: Oct 24, 2018
 
 __all__ = ['NiftiDataset',
            'MultimodalNiftiDataset',
+           'MultimodalNifti2p5DDataset',
            'MultimodalImageDataset']
 
 from typing import Callable, List, Optional
@@ -122,6 +123,21 @@ class MultimodalNiftiDataset(MultimodalDataset):
     def get_data(self, fn): return nib.load(fn).get_fdata(dtype=np.float32)
 
     def stack(self, imgs): return np.stack(imgs)
+
+
+class MultimodalNifti2p5DDataset(MultimodalNiftiDataset):
+    """
+    create a dataset class in PyTorch for reading N types of NIfTI files to M types of output NIfTI files
+    2.5D dataset, so return images stacked in the channel dimension for processing with a 2D CNN
+
+    ** note that all images must have the same dimensions! **
+
+    Args:
+        source_dirs (List[str]): paths to source images
+        target_dirs (List[str]): paths to target images
+        transform (Callable): transform to apply to both source and target images
+    """
+    def stack(self, imgs): return np.concatenate(imgs, axis=0)
 
 
 class MultimodalImageDataset(MultimodalDataset):
