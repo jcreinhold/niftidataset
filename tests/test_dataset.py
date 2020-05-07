@@ -19,11 +19,6 @@ import torchvision.transforms as torch_tfms
 
 from niftidataset import *
 
-try:
-    import fastai
-except ImportError:
-    fastai = None
-
 
 class TestUtilities(unittest.TestCase):
 
@@ -222,27 +217,6 @@ class TestUtilities(unittest.TestCase):
         myds = MultimodalNiftiDataset(sd, td, composed)
         self.assertEqual(myds[0][0].shape, (1, 51, 64, 64))
         self.assertEqual(myds[0][1].shape, (1, 51, 64, 64))
-
-    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
-    def test_niftidataset_2d_fastai(self):
-        composed = torch_tfms.Compose([RandomCrop2D(10, 0),
-                                       ToTensor(),
-                                       ToFastaiImage()])
-        myds = NiftiDataset(self.train_dir, self.train_dir, composed)
-        self.assertEqual(myds[0][0].shape, (1,10,10))
-
-    @unittest.skipIf(fastai is None, "fastai is not installed on this system")
-    def test_tifftuplelist(self):
-        from niftidataset.fastai import TIFFTupleList
-        data = (TIFFTupleList.from_folders(self.train_dir, '1', '2', extensions=('.tif'))
-                             .no_split()
-                             .label_const(0.)
-                             .transform()
-                             .databunch(bs=4))
-        data.valid_dl = None
-        print(data.train_ds[0])
-        data.show_batch(rows=1)
-        self.assertEqual(data.train_ds[0][0].data[0].shape, (1,256,256))
 
     def tearDown(self):
         shutil.rmtree(self.out_dir)
