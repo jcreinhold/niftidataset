@@ -7,7 +7,7 @@ niftidataset
 [![Python Versions](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
 
 This package simply provides appropriate `dataset` and `transforms` classes for NIfTI images 
-for use with PyTorch or PyTorch wrappers
+for use with PyTorch or PyTorch wrappers.
 
 ** Note that this is an **alpha** release. If you have feedback or problems, please submit an issue (it is very appreciated) **
 

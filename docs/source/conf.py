@@ -42,9 +42,9 @@ copyright = '2020, Jacob Reinhold'
 author = 'Jacob Reinhold'
 
 # The short X.Y version
-version = '0.1'
+version = '0.2'
 # The full version, including alpha/beta/rc tags
-release = '0.1.5'
+release = '0.2.0'
 
 
 # -- General configuration ---------------------------------------------------

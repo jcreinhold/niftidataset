@@ -15,7 +15,6 @@ __all__ = ['RandomCrop2D',
            'RandomCrop',
            'RandomSlice',
            'ToTensor',
-           'ToFastaiImage',
            'ToPILImage',
            'AddChannel',
            'FixIntensityRange',
@@ -286,17 +285,6 @@ class ToTensor(BaseTransform):
         if src.ndim == 2: src = src[None,...] # add channel dimension
         if tgt.ndim == 2: tgt = tgt[None,...]
         return torch.from_numpy(src), torch.from_numpy(tgt)
-
-
-class ToFastaiImage(BaseTransform):
-    """ convert a 2D image to fastai.Image class """
-    def __init__(self):
-        from fastai.vision import Image
-        self.Image = Image
-
-    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
-        x, y = sample
-        return self.Image(x), self.Image(y)
 
 
 class ToPILImage(BaseTransform):

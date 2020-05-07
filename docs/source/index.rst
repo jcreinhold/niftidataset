@@ -16,7 +16,6 @@ process NIfTI files for PyTorch neural networks
 
    dataset
    transforms
-   fastai
 
 Indices and tables
 ==================
