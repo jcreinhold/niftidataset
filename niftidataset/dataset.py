@@ -13,7 +13,8 @@ Created on: Oct 24, 2018
 __all__ = ['NiftiDataset',
            'MultimodalNiftiDataset',
            'MultimodalNifti2p5DDataset',
-           'MultimodalImageDataset']
+           'MultimodalImageDataset',
+           'get_train_and_validation_from_one_directory']
 
 from typing import Callable, List, Optional
 
