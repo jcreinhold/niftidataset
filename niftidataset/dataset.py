@@ -212,8 +212,8 @@ def get_train_and_validation_from_one_directory(source_dir: str, target_dir: str
     if not (0 < valid_pct < 1):
         raise ValueError(f'valid_pct must be between 0 and 1')
     source_fns, target_fns = glob_imgs(source_dir), glob_imgs(target_dir)
-    rand_idx = np.random.permutation(list(range(len(self.source_fns))))
-    cut = int(valid_pct * len(self.source_fns))
+    rand_idx = np.random.permutation(list(range(len(source_fns))))
+    cut = int(valid_pct * len(source_fns))
     return (dataset_class(source_fns=[source_fns[i] for i in rand_idx[cut:]],
                           target_fns=[target_fns[i] for i in rand_idx[cut:]],
                           transform=transform, preload=preload),
