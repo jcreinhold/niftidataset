@@ -78,13 +78,13 @@ class CropBase(BaseTransform):
         hmh = wmh = dmh = 0
         i0, i1 = int(s[self.axis] * self.pct[0]), int(s[self.axis] * (1. - self.pct[1]))
         if self.axis == 0:
-            hml += i0;
+            hml += i0
             hmh += i1
         elif self.axis == 1:
-            wml += i0;
+            wml += i0
             wmh += i1
         else:
-            dml += i0;
+            dml += i0
             dmh += i1
         return (hml, wml, dml), (hmh, wmh, dmh)
 

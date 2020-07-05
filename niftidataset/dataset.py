@@ -30,15 +30,14 @@ class NiftiDataset(Dataset):
     create a dataset class in PyTorch for reading NIfTI files
 
     Args:
-        source_dir (str): path to source images
-        target_dir (str): path to target images
+        source_fns (List[str]): list of paths to source images
+        target_fns (List[str]): list of paths to target images
         transform (Callable): transform to apply to both source and target images
         preload (bool): load all data when initializing the dataset
     """
 
-    def __init__(self, source_dir:str, target_dir:str, transform:Optional[Callable]=None, preload:bool=False):
-        self.source_dir, self.target_dir = source_dir, target_dir
-        self.source_fns, self.target_fns = glob_imgs(source_dir), glob_imgs(target_dir)
+    def __init__(self, source_fns:str, target_fns:str, transform:Optional[Callable]=None, preload:bool=False):
+        self.source_fns, self.target_fns = source_fns, target_fns
         self.transform = transform
         self.preload = preload
         if len(self.source_fns) != len(self.target_fns) or len(self.source_fns) == 0:
@@ -46,6 +45,11 @@ class NiftiDataset(Dataset):
         if preload:
             self.imgs = [(nib.load(s).get_data(), nib.load(t).get_data())
                          for s, t in zip(self.source_fns, self.target_fns)]
+
+    @classmethod
+    def setup_from_dir(cls, source_dir:str, target_dir:str, transform:Optional[Callable]=None, preload:bool=False):
+        source_fns, target_fns = glob_imgs(source_dir), glob_imgs(target_dir)
+        return cls(source_fns, target_fns, transform, preload)
 
     def __len__(self):
         return len(self.source_fns)
@@ -64,10 +68,10 @@ class NiftiDataset(Dataset):
 class MultimodalDataset(Dataset):
     """ base class for Multimodal*Dataset """
     
-    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None,
-                 segmentation:bool=False, preload:bool=False):
-        self.source_dirs, self.target_dirs = source_dirs, target_dirs
-        self.source_fns, self.target_fns = [self.glob_imgs(sd) for sd in source_dirs], [self.glob_imgs(td) for td in target_dirs]
+    def __init__(self, source_fns:List[List[str]], target_fns:List[List[str]],
+                 transform:Optional[Callable]=None,
+                 segmentation:bool=False, preload:bool=False, **kwargs):
+        self.source_fns, self.target_fns = source_fns, target_fns
         self.transform = transform
         self.segmentation = segmentation
         self.preload = preload
@@ -82,6 +86,14 @@ class MultimodalDataset(Dataset):
                 src_fns, tgt_fns = [sfns[idx] for sfns in self.source_fns], [tfns[idx] for tfns in self.target_fns]
                 self.imgs.append((self.stack([self.get_data(s) for s in src_fns]),
                                   self.stack([self.get_data(t) for t in tgt_fns])))
+
+    @classmethod
+    def setup_from_dir(cls, source_dirs:List[str], target_dirs:List[str],
+                       transform:Optional[Callable]=None, segmentation:bool=False,
+                       preload:bool=False, ext:str='*.nii*', **kwargs):
+        source_fns = [glob_imgs(sd, ext) for sd in source_dirs]
+        target_fns = [glob_imgs(td, ext) for td in target_dirs]
+        return cls(source_fns, target_fns, transform, segmentation, preload, **kwargs)
 
     def __len__(self):
         return len(self.source_fns[0])
@@ -99,8 +111,6 @@ class MultimodalDataset(Dataset):
             sample = (sample[0], sample[1].squeeze().long())  # for segmentation, loss expects no channel dim
         return sample
 
-    def glob_imgs(self, path): raise NotImplementedError
-    
     def get_data(self, fn): raise NotImplementedError
     
     def stack(self, imgs): raise NotImplementedError
@@ -117,8 +127,6 @@ class MultimodalNiftiDataset(MultimodalDataset):
         target_dirs (List[str]): paths to target images
         transform (Callable): transform to apply to both source and target images
     """
-    
-    def glob_imgs(self, path): return glob_imgs(path, ext='*.nii*')
     
     def get_data(self, fn): return nib.load(fn).get_fdata(dtype=np.float32)
 
@@ -159,18 +167,23 @@ class MultimodalImageDataset(MultimodalDataset):
         source_dirs (List[str]): paths to source images
         target_dirs (List[str]): paths to target images
         transform (Callable): transform to apply to both source and target images
-        ext (str): extension of desired images with * to allow glob to pick up all images in directory
-            e.g., `*.tif*` to pick up all TIFF images with ext `.tif` or `.tiff` (may pick up more so be careful)
         color (bool): images are color, ie, 3 channels
     """
 
-    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None, segmentation:bool=False,
-                 ext:str='*.tif*', color:bool=False, preload:bool=False):
-        self.ext = ext
+    def __init__(self, source_dirs:List[str], target_dirs:List[str], transform:Optional[Callable]=None,
+                 segmentation:bool=False, color:bool=False, preload:bool=False):
         self.color = color
         super().__init__(source_dirs, target_dirs, transform, segmentation, preload)
 
-    def glob_imgs(self, path): return glob_imgs(path, ext=self.ext)
+    @classmethod
+    def setup_from_dir(cls, source_dirs:List[str], target_dirs:List[str],
+                       transform:Optional[Callable]=None,
+                       segmentation:bool=False,
+                       color:bool=False, preload:bool=False,
+                       ext:str='*.tif*', **kwargs):
+        source_fns = [glob_imgs(sd, ext) for sd in source_dirs]
+        target_fns = [glob_imgs(td, ext) for td in target_dirs]
+        return cls(source_fns, target_fns, transform, segmentation, color, preload)
 
     def get_data(self, fn):
         data = np.asarray(Image.open(fn), dtype=np.float32)
