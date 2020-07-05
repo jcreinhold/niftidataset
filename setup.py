@@ -27,7 +27,7 @@ args = dict(
     long_description=readme,
     author='Jacob Reinhold',
     author_email='jacob.reinhold@jhu.edu',
-    url='https://github.com/jcreinhold/niftidataset',
+    url='https://github.com/s-mostafa-a/niftidataset',
     license=license,
     packages=find_packages(exclude=('tests', 'docs', 'tutorials')),
     keywords="nifti dataset",
