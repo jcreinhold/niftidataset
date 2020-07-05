@@ -194,3 +194,29 @@ class MultimodalImageDataset(MultimodalDataset):
         data = np.stack(imgs)
         if self.color: data = data.squeeze()
         return data
+
+
+def get_train_and_validation_from_one_directory(source_dir: str, target_dir: str, valid_pct: float = 0.2,
+                                                dataset_class: Dataset = NiftiDataset,
+                                                transform: Optional[Callable] = None, preload: bool = False):
+    """
+    :param source_dir: path to source images
+    :param target_dir: path to target images
+    :param valid_pct: percent of validation set from data
+    :param dataset_class: class of Dataset wanted to be returned
+    :param transform: transform to apply to both source and target images
+    :param preload: load all data when initializing the dataset
+    :return: tuple of (train_dataset, validation_dataset)
+    """
+    if not (0 < valid_pct < 1):
+        raise ValueError(f'valid_pct must be between 0 and 1')
+    source_fns, target_fns = glob_imgs(source_dir), glob_imgs(target_dir)
+    rand_idx = np.random.permutation(list(range(len(self.source_fns))))
+    cut = int(valid_pct * len(self.source_fns))
+    return (dataset_class(source_fns=[source_fns[i] for i in rand_idx[cut:]],
+                          target_fns=[target_fns[i] for i in rand_idx[cut:]],
+                          transform=transform, preload=preload),
+            dataset_class(source_fns=[source_fns[i] for i in rand_idx[:cut]],
+                          target_fns=[target_fns[i] for i in rand_idx[:cut]],
+                          transform=transform, preload=preload))
+
