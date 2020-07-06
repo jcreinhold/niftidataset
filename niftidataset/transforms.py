@@ -26,6 +26,7 @@ __all__ = ['RandomCrop2D',
            'RandomFlip',
            'RandomGamma',
            'RandomNoise',
+           'NormalizeHU',
            'get_transforms']
 
 import random
