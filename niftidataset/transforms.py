@@ -573,6 +573,26 @@ class MedianFilter:
         return src, tgt
 
 
+class NormalizeHU:
+    """
+    Normalize HU-densities to interval [0, 255].
+    Trim HU that are outside range [min_hu, max_hu], then scale to [0, 255].
+    """
+    def __init__(self, min_hu=-1000, max_hu=400):
+        if min_hu >= max_hu:
+            raise NiftiDatasetError('min_hu must be less than max_hu')
+        self.min_hu = min_hu
+        self.max_hu = max_hu
+
+    def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+        src, tgt = sample
+        src = (src - self.min_hu) / (self.max_hu - self.min_hu)
+        src[src > 1] = 1.
+        src[src < 0] = 0.
+        src *= 255
+        return src, tgt
+
+
 def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:float=0,
                    translate:float=None, scale:float=None, vflip:bool=False, hflip:bool=False,
                    gamma:float=0, gain:float=0, noise_pwr:float=0, block:Optional[Tuple[int,int]]=None,
