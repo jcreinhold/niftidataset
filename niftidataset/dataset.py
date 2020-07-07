@@ -197,8 +197,8 @@ class MultimodalImageDataset(MultimodalDataset):
         return data
 
 
-def train_val_split(source_dir: str, target_dir: str, valid_pct: float = 0.2, dataset_class: Dataset = NiftiDataset,
-                    transform: Optional[Callable] = None, preload: bool = False):
+def train_val_split(source_dir: str, target_dir: str, valid_pct: float = 0.2,
+                    dataset_class=NiftiDataset, transform: Optional[Callable] = None, preload: bool = False):
     """
     create two separate Datasets in PyTorch for working with NifTi files. If a directory contains source files
     and the other one contains target files and also you dont have a specefic directory for validation set,
@@ -208,7 +208,7 @@ def train_val_split(source_dir: str, target_dir: str, valid_pct: float = 0.2, da
         source_dir (str): path to source images.
         target_dir (str): path to target images.
         valid_pct (float): percent of validation set from data.
-        dataset_class (Dataset): class of dataset which is wanted to be created.
+        dataset_class : class of dataset which is wanted to be created.
         [NiftiDataset or MultimodalImageDataset or MultimodalNifti2p5DDataset or MultimodalNiftiDataset or
          MultimodalDataset]
         transform (Callable): transform to apply to both source and target images.
