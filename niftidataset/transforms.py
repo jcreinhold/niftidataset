@@ -574,23 +574,34 @@ class MedianFilter:
         return src, tgt
 
 
-class NormalizeHU:
+class TrimIntensity:
     """
-    Normalize HU-densities to interval [0, 255].
-    Trim HU that are outside range [min_hu, max_hu], then scale to [0, 255].
+    Trims intensity to given interval [new_min, new_max].
+    Trim intensities that are outside range [min_val, max_val], then scale to [new_min, new_max].
     """
-    def __init__(self, min_hu=-1000, max_hu=400):
-        if min_hu >= max_hu:
-            raise NiftiDatasetError('min_hu must be less than max_hu')
-        self.min_hu = min_hu
-        self.max_hu = max_hu
+    def __init__(self, min_val: float = -1000.0, max_val: float = 400.0,
+                 new_min: float = 0.0, new_max: float = 255.0):
+        if min_val >= max_val:
+            raise NiftiDatasetError('min_val must be less than max_val')
+        if new_min >= new_max:
+            raise NiftiDatasetError('new_min must be less than new_max')
+        self.min_val = min_val
+        self.max_val = max_val
+        self.new_min = new_min
+        self.new_max = new_max
+
+    def _tfm(self, x: torch.Tensor):
+        x = (x - self.min_val) / (self.max_val - self.min_val)
+        x[x > 1] = 1.
+        x[x < 0] = 0.
+        diff = self.new_max - self.new_min
+        x *= diff
+        x += self.new_min
+        return x
 
     def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         src, tgt = sample
-        src = (src - self.min_hu) / (self.max_hu - self.min_hu)
-        src[src > 1] = 1.
-        src[src < 0] = 0.
-        src *= 255
+        self._tfm(src)
         return src, tgt
 
 
