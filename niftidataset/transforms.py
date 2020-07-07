@@ -601,8 +601,7 @@ class TrimIntensity:
 
     def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         src, tgt = sample
-        self._tfm(src)
-        return src, tgt
+        return self._tfm(src), tgt
 
 
 def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:float=0,
