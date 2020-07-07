@@ -582,9 +582,9 @@ class TrimIntensity:
     def __init__(self, min_val: float = -1000.0, max_val: float = 400.0,
                  new_min: float = 0.0, new_max: float = 255.0):
         if min_val >= max_val:
-            raise NiftiDatasetError('min_val must be less than max_val')
+            raise ValueError('min_val must be less than max_val')
         if new_min >= new_max:
-            raise NiftiDatasetError('new_min must be less than new_max')
+            raise ValueError('new_min must be less than new_max')
         self.min_val = min_val
         self.max_val = max_val
         self.new_min = new_min

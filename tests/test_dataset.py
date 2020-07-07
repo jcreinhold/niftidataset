@@ -233,6 +233,12 @@ class TestUtilities(unittest.TestCase):
     def test_train_val_split(self):
         import torch
         composed = torch_tfms.Compose([ToTensor()])
+        gone_through_exception = False
+        try:
+            train_val_split(self.train_dir, self.train_dir, valid_pct=0.0, transform=composed)
+        except ValueError:
+            gone_through_exception = True
+        self.assertTrue(gone_through_exception)
         tr, val = train_val_split(self.train_dir, self.train_dir,
                                   valid_pct=0.5, transform=composed)
         self.assertIsNotNone(tr)
