@@ -218,6 +218,27 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds[0][0].shape, (1, 51, 64, 64))
         self.assertEqual(myds[0][1].shape, (1, 51, 64, 64))
 
+    def test_trim_intensity(self):
+        import numpy as np
+        composed = torch_tfms.Compose([ToTensor()])
+        src, tgt = NiftiDataset.setup_from_dir(self.train_dir, self.train_dir, composed)[0]
+        maxim = np.max(src.numpy())
+        minim = np.min(src.numpy())
+        composed2 = torch_tfms.Compose([ToTensor(),
+                                        TrimIntensity(max_val=maxim-1000, min_val=minim-1000)])
+        src, tgt = NiftiDataset.setup_from_dir(self.train_dir, self.train_dir, composed2)[0]
+        self.assertEqual(np.max(src.numpy()), 255.)
+        self.assertEqual(np.min(src.numpy()) > 0.0, True)
+
+    def test_train_val_split(self):
+        import torch
+        composed = torch_tfms.Compose([ToTensor()])
+        tr, val = train_val_split(self.train_dir, self.train_dir,
+                                  valid_pct=0.5, transform=composed)
+        self.assertIsNotNone(tr)
+        self.assertIsNotNone(val)
+        self.assertEqual(torch.all(torch.eq(val[0][0], tr[0][0])), torch.tensor(True))
+
     def tearDown(self):
         shutil.rmtree(self.out_dir)
 

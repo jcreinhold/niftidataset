@@ -198,19 +198,16 @@ class MultimodalImageDataset(MultimodalDataset):
 
 
 def train_val_split(source_dir: str, target_dir: str, valid_pct: float = 0.2,
-                    dataset_class=NiftiDataset, transform: Optional[Callable] = None, preload: bool = False):
+                    transform: Optional[Callable] = None, preload: bool = False):
     """
-    create two separate Datasets in PyTorch for working with NifTi files. If a directory contains source files
-    and the other one contains target files and also you dont have a specefic directory for validation set,
-    this function splits data to two Datasets randomly with given percentage.
+    create two separate NiftiDatasets in PyTorch for working with NifTi files. If a directory contains source files
+    and the other one contains target files and also you dont have a specific directory for validation set,
+    this function splits data to two NiftiDatasets randomly with given percentage.
 
     Args:
         source_dir (str): path to source images.
         target_dir (str): path to target images.
         valid_pct (float): percent of validation set from data.
-        dataset_class : class of dataset which is wanted to be created.
-        [NiftiDataset or MultimodalImageDataset or MultimodalNifti2p5DDataset or MultimodalNiftiDataset or
-         MultimodalDataset]
         transform (Callable): transform to apply to both source and target images.
         preload: load all data when initializing the dataset
     Returns:
@@ -221,10 +218,10 @@ def train_val_split(source_dir: str, target_dir: str, valid_pct: float = 0.2,
     source_fns, target_fns = glob_imgs(source_dir), glob_imgs(target_dir)
     rand_idx = np.random.permutation(list(range(len(source_fns))))
     cut = int(valid_pct * len(source_fns))
-    return (dataset_class(source_fns=[source_fns[i] for i in rand_idx[cut:]],
-                          target_fns=[target_fns[i] for i in rand_idx[cut:]],
-                          transform=transform, preload=preload),
-            dataset_class(source_fns=[source_fns[i] for i in rand_idx[:cut]],
-                          target_fns=[target_fns[i] for i in rand_idx[:cut]],
-                          transform=transform, preload=preload))
+    return (NiftiDataset(source_fns=[source_fns[i] for i in rand_idx[cut:]],
+                         target_fns=[target_fns[i] for i in rand_idx[cut:]],
+                         transform=transform, preload=preload),
+            NiftiDataset(source_fns=[source_fns[i] for i in rand_idx[:cut]],
+                         target_fns=[target_fns[i] for i in rand_idx[:cut]],
+                         transform=transform, preload=preload))
 
