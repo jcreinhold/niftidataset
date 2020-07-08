@@ -535,19 +535,53 @@ def normalize3d(tensor, mean, std, inplace=False):
 
 
 class Normalize:
-    """ implement a normalize function for input two images """
-    def __init__(self, mean, std, tfm_x=True, tfm_y=False, is_3d=False):
+    """
+    Implement a normalize function for input two images.
+    It computes std and mean for each input Tensor if mean and std equal to None,
+     then the function normalizes Tensor using the computed values.
+
+    Args:
+        mean: mean of input Tensor. if None passed, mean of each Tensor will be computed and normalization will be performed based on computed mean.
+        std: standard deviation of input Tensor. if None passed, std of each Tensor will be computed and normalization will be performed based on computed std.
+        replace_zero_std_with (float): zero std causes division by zero error. you can set it to very small number like 0.0001
+        tfm_x (bool): transform x or not
+        tfm_y (bool): transform y or not
+        is_3d (bool): is the Tensor 3d or not. this causes to normalize the Tensor on each channel.
+    """
+    def __init__(self, mean=None, std=None, replace_zero_std_with: float = 0., tfm_x: bool = True, tfm_y: bool = False,
+                 is_3d: bool = False):
         self.mean = mean
         self.std = std
         self.tfm_x = tfm_x
         self.tfm_y = tfm_y
         self.is_3d = is_3d
-        
+        self.replace_zero_std_with = replace_zero_std_with
+
+    def _tfm(self, tensor):
+        import torch
+        if self.is_3d:
+            norm = normalize3d
+            mean = self.mean if not (self.mean is None) else np.mean(tensor.numpy(), axis=(1, 2, 3))
+            std = self.std if not (self.std is None) else np.std(tensor.numpy(), axis=(1, 2, 3))
+            mean = np.array(list(mean))
+            std = np.array(list(std))
+            # to prevent division by zero
+            if self.replace_zero_std_with:
+                std[std == 0.] = self.replace_zero_std_with
+        else:
+            norm = tv.transforms.functional.normalize
+            mean = self.mean if not (self.mean is None) else tensor.numpy().mean()
+            std = self.std if not (self.std is None) else tensor.numpy().std()
+            # to prevent division by zero
+            if self.replace_zero_std_with:
+                if std == 0.:
+                    std = self.replace_zero_std_with
+        return norm(tensor, mean, std)
+
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
         src, tgt = sample
-        norm = normalize3d if self.is_3d else tv.transforms.functional.normalize
-        if self.tfm_x: src = norm(src, self.mean, self.std)
-        if self.tfm_y: tgt = norm(tgt, self.mean, self.std)
+        if self.tfm_x: src = self._tfm(src)
+        if self.tfm_y: tgt = self._tfm(tgt)
         return src, tgt
 
     def __repr__(self):
