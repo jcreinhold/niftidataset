@@ -558,7 +558,6 @@ class Normalize:
         self.replace_zero_std_with = replace_zero_std_with
 
     def _tfm(self, tensor):
-        import torch
         if self.is_3d:
             norm = normalize3d
             mean = self.mean if not (self.mean is None) else np.mean(tensor.numpy(), axis=(1, 2, 3))
@@ -663,5 +662,5 @@ def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degre
     if p[4] > 0 and (noise_pwr > 0):
         tfms.append(RandomNoise(p[4], tfm_x, tfm_y, noise_pwr))
     if mean is not None and std is not None:
-        tfms.append(Normalize(mean, std, tfm_x, tfm_y, is_3d))
+        tfms.append(Normalize(mean=mean, std=std, tfm_x=tfm_x, tfm_y=tfm_y,is_3d=is_3d))
     return tfms
