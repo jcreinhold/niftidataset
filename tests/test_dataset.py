@@ -227,6 +227,18 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(len(val), 1)
         self.assertEqual(torch.all(torch.eq(val[0][0], tr[0][0])), torch.tensor(True))
 
+    def test_trim_intensity(self):
+        import numpy as np
+        composed = torch_tfms.Compose([ToTensor()])
+        src, tgt = NiftiDataset.setup_from_dir(self.train_dir, self.train_dir, composed)[0]
+        maxim = np.max(src.numpy())
+        minim = np.min(src.numpy())
+        composed2 = torch_tfms.Compose([ToTensor(),
+                                        TrimIntensity(max_val=maxim-1000, min_val=minim-1000)])
+        src, tgt = NiftiDataset.setup_from_dir(self.train_dir, self.train_dir, composed2)[0]
+        self.assertEqual(np.max(src.numpy()), 1.)
+        self.assertTrue(np.min(src.numpy()) > -1.)
+
     def tearDown(self):
         shutil.rmtree(self.out_dir)
 
