@@ -16,7 +16,8 @@ import tempfile
 import unittest
 
 import torchvision.transforms as torch_tfms
-
+from typing import Tuple
+import torch
 from niftidataset import *
 
 
@@ -219,7 +220,6 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds[0][1].shape, (1, 51, 64, 64))
 
     def test_train_val_split(self):
-        import torch
         composed = torch_tfms.Compose([ToTensor()])
         tr, val = train_val_split(self.train_dir, self.train_dir,
                                   valid_pct=0.25, transform=composed)
@@ -239,8 +239,31 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(np.max(src.numpy()), 1.)
         self.assertTrue(np.min(src.numpy()) > -1.)
 
+    def test_normalize_without_std_and_mean(self):
+        composed = torch_tfms.Compose([ToTensor(), Normalize(is_3d=False)])
+        src, tgt = NiftiDataset.setup_from_dir(self.train_dir, self.train_dir, composed)[0]
+        mean = src.numpy().mean()
+        std = src.numpy().std()
+        self.assertTrue(-1 < mean < 1)
+        self.assertTrue(0 < std < 2)
+        composed2 = torch_tfms.Compose([ToTensor(), AddFakeChannel(),
+                                        Normalize(is_3d=True)])
+        src2, tgt2 = NiftiDataset.setup_from_dir(self.train_dir, self.train_dir, composed2)[0]
+        mean2 = src2.numpy().mean(axis=(1, 2, 3))
+        std2 = src2.numpy().std()
+        self.assertIsNotNone(mean2)
+        self.assertIsNotNone(std2)
+
     def tearDown(self):
         shutil.rmtree(self.out_dir)
+
+
+class AddFakeChannel:
+    def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+        src, tgt = sample
+        src = torch.Tensor([src.numpy(), src.numpy()])
+        tgt = torch.Tensor([tgt.numpy(), tgt.numpy()])
+        return src, tgt
 
 
 if __name__ == '__main__':
