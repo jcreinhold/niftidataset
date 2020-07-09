@@ -218,6 +218,15 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(myds[0][0].shape, (1, 51, 64, 64))
         self.assertEqual(myds[0][1].shape, (1, 51, 64, 64))
 
+    def test_train_val_split(self):
+        import torch
+        composed = torch_tfms.Compose([ToTensor()])
+        tr, val = train_val_split(self.train_dir, self.train_dir,
+                                  valid_pct=0.25, transform=composed)
+        self.assertEqual(len(tr), 3)
+        self.assertEqual(len(val), 1)
+        self.assertEqual(torch.all(torch.eq(val[0][0], tr[0][0])), torch.tensor(True))
+
     def tearDown(self):
         shutil.rmtree(self.out_dir)
 

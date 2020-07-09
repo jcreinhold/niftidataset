@@ -13,7 +13,8 @@ Created on: Oct 24, 2018
 __all__ = ['NiftiDataset',
            'MultimodalNiftiDataset',
            'MultimodalNifti2p5DDataset',
-           'MultimodalImageDataset']
+           'MultimodalImageDataset',
+           'train_val_split']
 
 from typing import Callable, List, Optional
 
@@ -36,7 +37,7 @@ class NiftiDataset(Dataset):
         preload (bool): load all data when initializing the dataset
     """
 
-    def __init__(self, source_fns:str, target_fns:str, transform:Optional[Callable]=None, preload:bool=False):
+    def __init__(self, source_fns:List[str], target_fns:List[str], transform:Optional[Callable]=None, preload:bool=False):
         self.source_fns, self.target_fns = source_fns, target_fns
         self.transform = transform
         self.preload = preload
@@ -194,3 +195,33 @@ class MultimodalImageDataset(MultimodalDataset):
         data = np.stack(imgs)
         if self.color: data = data.squeeze()
         return data
+
+
+def train_val_split(source_dir:str, target_dir:str, valid_pct:float=0.2,
+                    transform:Optional[Callable]=None, preload:bool=False):
+    """
+    create two separate NiftiDatasets in PyTorch for working with NifTi files. If a directory contains source files
+    and the other one contains target files and also you dont have a specific directory for validation set,
+    this function splits data to two NiftiDatasets randomly with given percentage.
+
+    Args:
+        source_dir (str): path to source images.
+        target_dir (str): path to target images.
+        valid_pct (float): percent of validation set from data.
+        transform (Callable): transform to apply to both source and target images.
+        preload: load all data when initializing the dataset
+    Returns:
+        Tuple: (train_dataset, validation_dataset).
+    """
+    if not (0 < valid_pct < 1):
+        raise ValueError(f'valid_pct must be between 0 and 1')
+    source_fns, target_fns = glob_imgs(source_dir), glob_imgs(target_dir)
+    rand_idx = np.random.permutation(list(range(len(source_fns))))
+    cut = int(valid_pct * len(source_fns))
+    return (NiftiDataset(source_fns=[source_fns[i] for i in rand_idx[cut:]],
+                         target_fns=[target_fns[i] for i in rand_idx[cut:]],
+                         transform=transform, preload=preload),
+            NiftiDataset(source_fns=[source_fns[i] for i in rand_idx[:cut]],
+                         target_fns=[target_fns[i] for i in rand_idx[:cut]],
+                         transform=transform, preload=preload))
+
