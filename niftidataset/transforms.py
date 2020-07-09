@@ -26,6 +26,7 @@ __all__ = ['RandomCrop2D',
            'RandomFlip',
            'RandomGamma',
            'RandomNoise',
+           'TrimIntensity',
            'get_transforms']
 
 import random
@@ -570,6 +571,40 @@ class MedianFilter:
         src, tgt = sample
         if self.tfm_x: src = self.filter(src, 3)
         if self.tfm_y: tgt = self.filter(tgt, 3)
+        return src, tgt
+
+
+class TrimIntensity:
+    """
+    Trims intensity to given interval [new_min, new_max].
+    Trim intensities that are outside range [min_val, max_val], then scale to [new_min, new_max].
+    """
+    def __init__(self, min_val:float, max_val:float,
+                 new_min:float=-1.0, new_max:float=1.0, tfm_x:bool=True, tfm_y:bool=False):
+        if min_val >= max_val:
+            raise ValueError('min_val must be less than max_val')
+        if new_min >= new_max:
+            raise ValueError('new_min must be less than new_max')
+        self.min_val = min_val
+        self.max_val = max_val
+        self.new_min = new_min
+        self.new_max = new_max
+        self.tfm_x = tfm_x
+        self.tfm_y = tfm_y
+
+    def _tfm(self, x:torch.Tensor):
+        x = (x - self.min_val) / (self.max_val - self.min_val)
+        x[x > 1] = 1.
+        x[x < 0] = 0.
+        diff = self.new_max - self.new_min
+        x *= diff
+        x += self.new_min
+        return x
+
+    def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]) -> Tuple[torch.Tensor,torch.Tensor]:
+        src, tgt = sample
+        if self.tfm_x: src = self._tfm(src)
+        if self.tfm_y: tgt = self._tfm(tgt)
         return src, tgt
 
 
