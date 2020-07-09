@@ -543,38 +543,34 @@ class Normalize:
     Args:
         mean: mean of input Tensor. if None passed, mean of each Tensor will be computed and normalization will be performed based on computed mean.
         std: standard deviation of input Tensor. if None passed, std of each Tensor will be computed and normalization will be performed based on computed std.
-        replace_zero_std_with (float): zero std causes division by zero error. you can set it to very small number like 0.0001
         tfm_x (bool): transform x or not
         tfm_y (bool): transform y or not
         is_3d (bool): is the Tensor 3d or not. this causes to normalize the Tensor on each channel.
     """
-    def __init__(self, mean=None, std=None, replace_zero_std_with: float = 0., tfm_x: bool = True, tfm_y: bool = False,
-                 is_3d: bool = False):
+    def __init__(self, mean=None, std=None, tfm_x:bool=True, tfm_y:bool=False,
+                 is_3d:bool=False):
         self.mean = mean
         self.std = std
         self.tfm_x = tfm_x
         self.tfm_y = tfm_y
         self.is_3d = is_3d
-        self.replace_zero_std_with = replace_zero_std_with
 
     def _tfm(self, tensor):
         if self.is_3d:
             norm = normalize3d
-            mean = self.mean if not (self.mean is None) else np.mean(tensor.numpy(), axis=(1, 2, 3))
-            std = self.std if not (self.std is None) else np.std(tensor.numpy(), axis=(1, 2, 3))
-            mean = np.array(list(mean))
-            std = np.array(list(std))
+            mean = torch.as_tensor(self.mean, dtype=torch.float32, device=tensor.device) if not (
+                    self.mean is None) else tensor.mean(dim=(1, 2, 3))
+            std = torch.as_tensor(self.std, dtype=torch.float32, device=tensor.device) if not (
+                    self.std is None) else tensor.std(dim=(1, 2, 3))
             # to prevent division by zero
-            if self.replace_zero_std_with:
-                std[std == 0.] = self.replace_zero_std_with
+            std[std == 0.] = 1e-6
         else:
             norm = tv.transforms.functional.normalize
-            mean = self.mean if not (self.mean is None) else tensor.numpy().mean()
-            std = self.std if not (self.std is None) else tensor.numpy().std()
+            mean = self.mean if not (self.mean is None) else tensor.mean().item()
+            std = self.std if not (self.std is None) else tensor.std().item()
             # to prevent division by zero
-            if self.replace_zero_std_with:
-                if std == 0.:
-                    std = self.replace_zero_std_with
+            if std == 0.:
+                std = 1e-6
         return norm(tensor, mean, std)
 
     def __call__(self, sample:Tuple[torch.Tensor,torch.Tensor]):
@@ -612,8 +608,8 @@ class TrimIntensity:
     Trims intensity to given interval [new_min, new_max].
     Trim intensities that are outside range [min_val, max_val], then scale to [new_min, new_max].
     """
-    def __init__(self, min_val: float = -1000.0, max_val: float = 400.0,
-                 new_min: float = 0.0, new_max: float = 255.0):
+    def __init__(self, min_val:float, max_val:float,
+                 new_min:float=-1.0, new_max:float=1.0, tfm_x:bool=True, tfm_y:bool=False):
         if min_val >= max_val:
             raise ValueError('min_val must be less than max_val')
         if new_min >= new_max:
@@ -622,6 +618,8 @@ class TrimIntensity:
         self.max_val = max_val
         self.new_min = new_min
         self.new_max = new_max
+        self.tfm_x = tfm_x
+        self.tfm_y = tfm_y
 
     def _tfm(self, x: torch.Tensor):
         x = (x - self.min_val) / (self.max_val - self.min_val)
@@ -634,7 +632,9 @@ class TrimIntensity:
 
     def __call__(self, sample: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         src, tgt = sample
-        return self._tfm(src), tgt
+        if self.tfm_x: src = self._tfm(src)
+        if self.tfm_y: tgt = self._tfm(tgt)
+        return src, tgt
 
 
 def get_transforms(p:Union[list,float], tfm_x:bool=True, tfm_y:bool=False, degrees:float=0,

@@ -228,18 +228,12 @@ class TestUtilities(unittest.TestCase):
         composed2 = torch_tfms.Compose([ToTensor(),
                                         TrimIntensity(max_val=maxim-1000, min_val=minim-1000)])
         src, tgt = NiftiDataset.setup_from_dir(self.train_dir, self.train_dir, composed2)[0]
-        self.assertEqual(np.max(src.numpy()), 255.)
-        self.assertTrue(np.min(src.numpy()) > 0.0)
+        self.assertEqual(np.max(src.numpy()), 1.)
+        self.assertTrue(np.min(src.numpy()) > -1.)
 
     def test_train_val_split(self):
         import torch
         composed = torch_tfms.Compose([ToTensor()])
-        gone_through_exception = False
-        try:
-            train_val_split(self.train_dir, self.train_dir, valid_pct=0.0, transform=composed)
-        except ValueError:
-            gone_through_exception = True
-        self.assertTrue(gone_through_exception)
         tr, val = train_val_split(self.train_dir, self.train_dir,
                                   valid_pct=0.5, transform=composed)
         self.assertIsNotNone(tr)
@@ -247,14 +241,14 @@ class TestUtilities(unittest.TestCase):
         self.assertEqual(torch.all(torch.eq(val[0][0], tr[0][0])), torch.tensor(True))
 
     def test_normalize_without_std_and_mean(self):
-        composed = torch_tfms.Compose([ToTensor(), Normalize(is_3d=False, replace_zero_std_with=0.00001)])
+        composed = torch_tfms.Compose([ToTensor(), Normalize(is_3d=False)])
         src, tgt = NiftiDataset.setup_from_dir(self.train_dir, self.train_dir, composed)[0]
         mean = src.numpy().mean()
         std = src.numpy().std()
         self.assertTrue(-1 < mean < 1)
-        self.assertEqual(std, 1)
+        self.assertTrue(0 < std < 2)
         composed2 = torch_tfms.Compose([ToTensor(), AddFakeChannel(),
-                                        Normalize(is_3d=True, replace_zero_std_with=0.0001)])
+                                        Normalize(is_3d=True)])
         src2, tgt2 = NiftiDataset.setup_from_dir(self.train_dir, self.train_dir, composed2)[0]
         mean2 = src2.numpy().mean(axis=(1, 2, 3))
         std2 = src2.numpy().std()
