@@ -317,16 +317,16 @@ class RandomAffine(tv.transforms.RandomAffine):
     """ apply random affine transformations to a sample of images """
 
     def __init__(self, p: float, degrees: float, translate: float = 0, scale: float = 0,
-                 resample: int = TF.InterpolationMode.BILINEAR,
+                 interpolation: int = TF.InterpolationMode.BILINEAR,
                  segmentation=False):
         self.p = p
         self.degrees, self.translate, self.scale = (-degrees, degrees), (translate, translate), (1 - scale, 1 + scale)
-        self.shear, self.fillcolor = None, 0
-        self.resample = resample
+        self.shear, self.fill = None, 0
+        self.resample = self.interpolation = interpolation
         self.segmentation = segmentation
 
-    def affine(self, x, params, resample=TF.InterpolationMode.BILINEAR):
-        return TF.affine(x, *params, interpolation=resample, fill=0)
+    def affine(self, x, params, interpolation=TF.InterpolationMode.BILINEAR):
+        return TF.affine(x, *params, interpolation=interpolation, fill=0)
 
     def __call__(self, sample: Tuple[PILImage, PILImage]):
         src, tgt = sample
