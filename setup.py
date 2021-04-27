@@ -22,7 +22,7 @@ with open('LICENSE') as f:
 
 args = dict(
     name='niftidataset',
-    version='0.2.0',
+    version='0.2.1',
     description="dataset and transforms classes for NIfTI data in pytorch",
     long_description=readme,
     author='Jacob Reinhold',
