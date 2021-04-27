@@ -23,7 +23,8 @@ import numpy as np
 from PIL import Image
 from torch.utils.data.dataset import Dataset
 
-from .utils import glob_imgs
+from niftidataset.errors import NiftiDatasetError
+from niftidataset.utils import glob_imgs
 
 
 class NiftiDataset(Dataset):
@@ -45,8 +46,17 @@ class NiftiDataset(Dataset):
         if len(self.source_fns) != len(self.target_fns) or len(self.source_fns) == 0:
             raise ValueError(f'Number of source and target images must be equal and non-zero')
         if preload:
-            self.imgs = [(nib.load(s).get_data(), nib.load(t).get_data())
-                         for s, t in zip(self.source_fns, self.target_fns)]
+            self.imgs = []
+            for s, t in zip(self.source_fns, self.target_fns):
+                sdata = nib.load(s).get_data()
+                tdata = nib.load(t).get_data()
+                self.imgs.append((sdata, tdata))
+                if sdata.size == 0 and tdata.size == 0:
+                    raise NiftiDatasetError(f'Both {s} and {t} are empty. Data needs to be non-empty.')
+                elif sdata.size == 0:
+                    raise NiftiDatasetError(f'Source {s} is empty. Data needs to be non-empty.')
+                elif tdata.size == 0:
+                    raise NiftiDatasetError(f'Target {s} is empty. Data needs to be non-empty.')
 
     @classmethod
     def setup_from_dir(cls, source_dir: str, target_dir: str, transform: Optional[Callable] = None,
@@ -86,9 +96,20 @@ class MultimodalDataset(Dataset):
         if preload:
             self.imgs = []
             for idx in range(len(self.source_fns[0])):
-                src_fns, tgt_fns = [sfns[idx] for sfns in self.source_fns], [tfns[idx] for tfns in self.target_fns]
-                self.imgs.append((self.stack([self.get_data(s) for s in src_fns]),
-                                  self.stack([self.get_data(t) for t in tgt_fns])))
+                src_fns = [sfns[idx] for sfns in self.source_fns]
+                tgt_fns = [tfns[idx] for tfns in self.target_fns]
+                src, tgt = [], []
+                for s in src_fns:
+                    sdata = self.get_data(s)
+                    if sdata.size == 0:
+                        raise NiftiDatasetError(f'Source {s} is empty. Data needs to be non-empty.')
+                    src.append(sdata)
+                for t in tgt_fns:
+                    tdata = self.get_data(t)
+                    if tdata.size == 0:
+                        raise NiftiDatasetError(f'Target {t} is empty. Data needs to be non-empty.')
+                    tgt.append(tdata)
+                self.imgs.append((self.stack(src), self.stack(tgt)))
 
     @classmethod
     def setup_from_dir(cls, source_dirs: List[str], target_dirs: List[str],

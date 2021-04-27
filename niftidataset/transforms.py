@@ -38,7 +38,7 @@ import torch
 import torchvision as tv
 import torchvision.transforms.functional as TF
 
-from .errors import NiftiDatasetError
+from niftidataset.errors import NiftiDatasetError
 
 PILImage = type(Image)
 
