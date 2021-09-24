@@ -6,6 +6,8 @@ niftidataset
 [![Documentation Status](https://readthedocs.org/projects/niftidataset/badge/?version=latest)](http://niftidataset.readthedocs.io/en/latest/)
 [![Python Versions](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
 
+**This package is deprecated in favor of [torchio](https://torchio.readthedocs.io/) or [MONAI](https://monai.io/) and will no longer be supported**
+
 This package simply provides appropriate `dataset` and `transforms` classes for NIfTI images 
 for use with PyTorch or PyTorch wrappers.
 
